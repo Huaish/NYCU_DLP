@@ -40,7 +40,9 @@ I design my neural network as below:
 
 **(a) Update output layer weights**
 
-$\text{Let Loss = MSE Loss} = \frac{1}{N}\sum_{i=1}^{N}(Y_i-\hat{Y_i})\\$
+```math
+\text{Let Loss = MSE Loss} = \frac{1}{N}\sum_{i=1}^{N}(Y_i-\hat{Y_i})\\
+```
 
 $$
 \begin{align*}
