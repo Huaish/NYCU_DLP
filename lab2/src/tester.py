@@ -5,6 +5,9 @@ import termcolor
 from model.SCCNet import SCCNet
 from torch.utils.data import DataLoader
 from Dataloader import MIBCI2aDataset
+from utils import get_args
+
+
 
 def test(model, device, test_loader, criterion):
     model.eval()
@@ -24,17 +27,24 @@ def test(model, device, test_loader, criterion):
     return test_loss / len(test_loader), accuracy
 
 if __name__ == '__main__':
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
-    
+    args = get_args()
+
     # Load Data
-    test_dataset = MIBCI2aDataset(mode='test', method='LOSOFT')
+    test_dataset = MIBCI2aDataset(mode='test', method=args.method)
     test_loader = DataLoader(test_dataset, shuffle=False)
     
     criterion = nn.CrossEntropyLoss()
     
-    model = SCCNet(numClasses=4, timeSample=438, Nu=22, C=22, Nc=22, Nt=16, dropoutRate=0.5).to(device)
-    model.load_state_dict(torch.load("latest_model.pt"))
-    test_loss, accuracy = test(model, device, test_loader, criterion)
+    print(termcolor.colored(f"Testing {args.model_path}", "blue"))
+    model = SCCNet(numClasses=4, timeSample=438, Nu=22, C=22, Nc=22, Nt=16, dropoutRate=0.5).to(args.device)
+    model.load_state_dict(torch.load(args.model_path))
+    
+    test_loss, accuracy = test(model, args.device, test_loader, criterion)
     print(termcolor.colored(f'Test Loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%', "green"))
     
+# python tester.py --method='LOSO'
+# python tester.py --method='SD'
+# python tester.py --method='LOSOFT'
+# python tester.py --method='SD' --model_path="Best_SD_model.pt"
+# python tester.py --method='LOSO' --model_path="Best_LOSO_model.pt"
+# python tester.py --method='LOSOFT' --model_path="Best_FT_model.pt"
