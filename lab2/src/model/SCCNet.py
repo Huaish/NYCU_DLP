@@ -48,18 +48,15 @@ class SCCNet(nn.Module):
         # First convolutional block
         x = self.conv1(x)
         x = self.bn1(x)
-        # x = self.square(x)
-        # x = self.dropout1(x)
         
         # Second convolutional block
-        # x = x.permute(0, 2, 1, 3)
         x = self.conv2(x)
         x = self.bn2(x)
+
         x = self.square(x)
         x = self.dropout2(x)
 
         # Pooling layer
-        # x = x.permute(0, 2, 1, 3)
         x = self.pool(x)
         x = self.log(x)
         
@@ -71,4 +68,4 @@ class SCCNet(nn.Module):
 
     # if needed, implement the get_size method for the in channel of fc layer
     def get_size(self, C, timeSample, Nu, Nc, Nt):
-        return 20 * 32
+        return 20  * 31
