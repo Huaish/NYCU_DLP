@@ -33,7 +33,7 @@ if __name__ == '__main__':
     
     criterion = nn.CrossEntropyLoss()
     
-    model = SCCNet(numClasses=4, timeSample=438, Nu=22, C=22, Nc=22, Nt=1, dropoutRate=0.5).to(device)
+    model = SCCNet(numClasses=4, timeSample=438, Nu=22, C=22, Nc=22, Nt=16, dropoutRate=0.5).to(device)
     model.load_state_dict(torch.load("latest_model.pt"))
     test_loss, accuracy = test(model, device, test_loader, criterion)
     print(termcolor.colored(f'Test Loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%', "green"))
