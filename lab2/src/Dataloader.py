@@ -10,18 +10,10 @@ class MIBCI2aDataset(torch.utils.data.Dataset):
         and concatenate them into a single numpy array
         """
         features = []
-        subjects = []
-        subject_ids = []
         for file in sorted(os.listdir(filePath)):
             feature = np.load(os.path.join(filePath, file))
             feature = np.expand_dims(feature, axis=1)
             features.append(feature)
-            subject_id = int(''.join(filter(str.isdigit, file)))
-            subjects.append(torch.arange(start=subject_id, end=subject_id+1).repeat_interleave(feature.shape[0]))
-            if subject_id not in subject_ids:
-                subject_ids.append(subject_id)
-        self.subjects = torch.cat(subjects)
-        self.subject_ids = subject_ids
         return np.concatenate(features)
 
     def _getLabels(self, filePath):
@@ -41,8 +33,6 @@ class MIBCI2aDataset(torch.utils.data.Dataset):
         # remember to change the file path according to different experiments
         assert mode in ['train', 'test', 'finetune']
         assert method in ['LOSO', 'SD', 'LOSOFT']
-        self.subjects = None
-        self.subject_ids = []
         
         if method == "LOSO":
             if mode == 'train':
@@ -51,10 +41,6 @@ class MIBCI2aDataset(torch.utils.data.Dataset):
                 # leave-one-subject-out: ./dataset/LOSO_train/features/ and ./dataset/LOSO_train/labels/
                 self.features = self._getFeatures(filePath='./dataset/LOSO_train/features/')
                 self.labels = self._getLabels(filePath='./dataset/LOSO_train/labels/')
-            if mode == 'finetune':
-                # finetune: ./dataset/FT/features/ and ./dataset/FT/labels/
-                self.features = self._getFeatures(filePath='./dataset/FT/features/')
-                self.labels = self._getLabels(filePath='./dataset/FT/labels/')
             if mode == 'test':
                 print("====================== Load LOSO Dataset (test) ======================")
                 # subject dependent: ./dataset/SD_test/features/ and ./dataset/SD_test/labels/

@@ -48,3 +48,6 @@ if __name__ == '__main__':
 # python tester.py --method='SD' --model_path="Best_SD_model.pt"
 # python tester.py --method='LOSO' --model_path="Best_LOSO_model.pt"
 # python tester.py --method='LOSOFT' --model_path="Best_FT_model.pt"
+# python tester.py --method='SD' --model_path="SD_latest_model.pt"
+# python tester.py --method='LOSO' --model_path="LOSO_latest_model.pt"
+# python tester.py --method='LOSOFT' --model_path="LOSOFT_latest_model.pt"
