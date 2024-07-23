@@ -3,13 +3,13 @@
 > student id: 313551097<br>
 > student name: 鄭淮薰
 
-## Overview
+## I. Overview
 
 In this lab, I implement SCCNet and three differennt methods, subject dependent, leave-one-subject-out, and LOSO with fine tuning, to predict motor imagery task.
 
-## Implementation Details
+## II. Implementation Details
 
-### Details of training and testing code
+### A. Details of training and testing code
 
 #### Training
 
@@ -75,14 +75,14 @@ The `main()` function loads the corresponding training data and trains the model
 
     # Training
     history = train(model, device, train_loader, optimizer, criterion, epochs)
-    train_acc = history['accuracy'][-1]
 
     if args.method == 'LOSOFT':
         FT_dataset = MIBCI2aDataset(mode='finetune', method='LOSOFT')
         FT_loader = DataLoader(FT_dataset, batch_size=batch_size, shuffle=True)
         history = train(model, device, FT_loader, optimizer, criterion, args.ft_epochs)
 
-    np.save('LOSOFT_history.npy', history)
+    train_acc = history['accuracy'][-1]
+    np.save(f'{method}_history.npy', history)
 
     # Save Model
     if model and args.save_model:
@@ -157,7 +157,7 @@ $ python tester.py --method='LOSO' --model_path="LOSO_model.pt"
 $ python tester.py --method='LOSOFT' --model_path="FT_model.pt"
 ```
 
-### Details of the SCCNet
+### B. Details of the SCCNet
 
 > reference paper: https://ieeexplore.ieee.org/document/8716937
 
@@ -242,9 +242,9 @@ class SCCNet(nn.Module):
         return F.softmax(x, dim=1)
 ```
 
-## Analyze on the experiment results
+## III. Analyze on the experiment results
 
-### Discover during the training process
+### A. Discover during the training process
 
 After many trainings, I discovered the following phenomena:
 
@@ -253,7 +253,7 @@ After many trainings, I discovered the following phenomena:
 
 ---
 
-以下為三種方法的訓練過程與結果：
+The following is the results of the three methods:
 
 #### SD
 
@@ -289,7 +289,7 @@ After many trainings, I discovered the following phenomena:
 |         Acc / Loss Plot         |
 |        ![FT](img/FT.png)        |
 
-### Comparison between the three training methods
+### B. Comparison between the three training methods
 
 **Training Accuracy Comparision**
 
@@ -314,12 +314,12 @@ From this we can draw the following conclusions:
 
 3. LOSO is due to lack of test subject data. This makes it more difficult for the model to adequately adapt to the characteristics of a particular subject, resulting in lower accuracy. But because of this, the performance of the LOSO model in the training data set and the test data set is more consistent
 
-## Discussion
+## IV. Discussion
 
-### What is the reason to make the task hard to achieve high accuracy?
+### A. What is the reason to make the task hard to achieve high accuracy?
 
 After training, I found that the model is very easy to overfitting. I think it may be that the EEG signals from different subjects and sessions are very different, which makes the model's generalization ability poor. This results in the model being unable to achieve high accuracy on test data.
 
-### What can you do to improve the accuracy of this task?
+### B. What can you do to improve the accuracy of this task?
 
 The author added Dropout and L2 when designing the model to reduce the model complexity and solve the overfitting problem. During the training process, I reduced the learning rate to ensure stable convergence of the model, and used the Adam optimizer to improve training efficiency. In addition, I stopped training early at the appropriate time to improve the problem of low accuracy.
