@@ -33,14 +33,18 @@ if __name__ == '__main__':
     test_dataset = MIBCI2aDataset(mode='test', method=args.method)
     test_loader = DataLoader(test_dataset, shuffle=False)
     
+    # Define Loss Function
     criterion = nn.CrossEntropyLoss()
     
+    # Load model
     print(termcolor.colored(f"Testing {args.model_path}", "blue"))
     model = SCCNet(numClasses=4, timeSample=438, Nu=22, C=22, Nc=22, Nt=16, dropoutRate=0.5).to(args.device)
     model.load_state_dict(torch.load(args.model_path))
     
+    # Show the results
     test_loss, accuracy = test(model, args.device, test_loader, criterion)
-    print(termcolor.colored(f'Test Loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%', "green"))
+    print(termcolor.colored(f'Test Loss: {test_loss:.4f}, \
+                            Accuracy: {accuracy:.2f}%', "green"))
     
 # python tester.py --method='LOSO'
 # python tester.py --method='SD'
