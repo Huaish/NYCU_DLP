@@ -42,7 +42,7 @@ class SCCNet(nn.Module):
         self.log = LogLayer()
         
         # Fully connected layer
-        self.fc = nn.Linear(self.get_size(C, timeSample, Nu, Nc, Nt), numClasses, bias=True)
+        self.fc = nn.Linear(self.get_size(C, timeSample, Nu, Nt), numClasses, bias=True)
 
     def forward(self, x):
         # First convolutional block
@@ -67,5 +67,25 @@ class SCCNet(nn.Module):
         return F.softmax(x, dim=1)
 
     # if needed, implement the get_size method for the in channel of fc layer
-    def get_size(self, C, timeSample, Nu, Nc, Nt):
-        return 20  * 31
+    def get_size(self, C, timeSample, Nu, Nt):
+        # input size: (batch_size, 1, C, timeSample)
+        channel = 1
+        H = C
+        W = timeSample
+        
+        # after conv1: (batch_size, Nu, C, timeSample - Nt + 1) = (300, 22, 1, 437)
+        channel = Nu
+        H = 1
+        W = timeSample - Nt + 1
+        
+        # after conv2: (batch_size, 20, C, (437 - 12 + 2*6) / 1 + 1) = (300, 20, 1, 438)
+        channel = 20
+        H = 1
+        W = (W - 12 + 2*6) // 1 + 1
+
+        # after pooling: (batch_size, 20, 1, (438 - 62) / 12 + 1) = (batch_size, 20, 1, (438 - 62) / 12 + 1) = (300, 20, 1, 32)
+        channel = 20
+        H = 1
+        W = (W - 62) // 12 + 1
+        
+        return channel * H * W
