@@ -80,14 +80,14 @@ if __name__ == '__main__':
 
     # Training
     history = train(model, device, train_loader, optimizer, criterion, epochs)
-    train_acc = history['accuracy'][-1]
 
     if args.method == 'LOSOFT':
         FT_dataset = MIBCI2aDataset(mode='finetune', method='LOSOFT')
         FT_loader = DataLoader(FT_dataset, batch_size=batch_size, shuffle=True)
         history = train(model, device, FT_loader, optimizer, criterion, args.ft_epochs)
-    
-    np.save('LOSOFT_history.npy', history)
+
+    train_acc = history['accuracy'][-1]
+    np.save(f'{method}_history.npy', history)
 
     # Save Model
     if model and args.save_model:
