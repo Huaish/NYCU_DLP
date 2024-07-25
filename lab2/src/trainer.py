@@ -91,8 +91,8 @@ if __name__ == '__main__':
 
     # Save Model
     if model and args.save_model:
-        torch.save(model.state_dict(), f"{method}_latest_model.pt")
-        torch.save(model.state_dict(), "latest_model.pt")
+        torch.save(model.state_dict(), f"{method}_latest_model.pth")
+        torch.save(model.state_dict(), "latest_model.pth")
         print('Latest Model saved with accuracy: {:.2f}%'.format(train_acc))
 
 

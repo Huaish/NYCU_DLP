@@ -33,7 +33,7 @@ def get_args():
                         help='random seed (default: 19)')
     parser.add_argument('--save_model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--model_path', type=str, default='latest_model.pt')
+    parser.add_argument('--model_path', type=str, default='latest_model.pth')
     
     
     args = parser.parse_args()
