@@ -210,5 +210,6 @@ pyrightconfig.json
 *.zip
 *.tar.gz
 lab3/dataset/*
+lab3/runs/*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
