@@ -97,18 +97,18 @@ class SimpleOxfordPetDataset(OxfordPetDataset):
         mask = sample["mask"]
         # image = np.array(Image.fromarray(sample["image"]).resize((256, 256), Image.BILINEAR))
         # mask = np.array(Image.fromarray(sample["mask"]).resize((256, 256), Image.NEAREST))
-        trimap = np.array(Image.fromarray(sample["trimap"]).resize((256, 256), Image.NEAREST))
+        # trimap = np.array(Image.fromarray(sample["trimap"]).resize((256, 256), Image.NEAREST))
 
         # convert to other format HWC -> CHW
         sample["image"] = np.moveaxis(image, -1, 0)
         sample["mask"] = mask
         # sample["mask"] = np.expand_dims(mask, 0)
-        sample["trimap"] = np.expand_dims(trimap, 0)
+        # sample["trimap"] = np.expand_dims(trimap, 0)
 
         return {
             "image": torch.tensor(sample["image"], dtype=torch.float32),
             "mask": torch.tensor(sample["mask"], dtype=torch.long),
-            "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
+            # "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
         }
 
 
@@ -149,18 +149,18 @@ def load_dataset(data_path, mode):
             A.RandomResizedCrop(256, 256, scale=(0.8, 1.0)),
             A.HorizontalFlip(),
             A.RandomRotate90(),
-            A.RandomBrightnessContrast(),
+            # A.RandomBrightnessContrast(),
             A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
             A.GaussianBlur(),
             A.Normalize(),
         ]),
         'valid': A.Compose([
             A.Resize(256, 256),
-            ToTensorV2()
+            A.Normalize(),
         ]),
         'test': A.Compose([
             A.Resize(256, 256),
-            ToTensorV2()
+            A.Normalize(),
         ])
     }
     
@@ -178,18 +178,17 @@ def load_dataset(data_path, mode):
 
 if __name__ == "__main__":
     data_path = "../dataset/oxford-iiit-pet"
-    mode = "train"
+    mode = "valid"
     dataset = load_dataset(data_path, mode)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True)
-    # print(dataset[0]["image"].shape)
     for batch in dataloader:
-        print(batch["image"].shape, batch["mask"].shape, batch["trimap"].shape)
+        print(batch["image"].shape, batch["mask"].shape)
         break
     
     # Show the first image and mask
     import matplotlib.pyplot as plt
     plt.imshow(batch["image"][0].permute(1, 2, 0))
-    plt.savefig("image.png")
+    plt.savefig("tmp/image.png")
     
     plt.imshow(batch["mask"][0])
-    plt.savefig("mask.png")
+    plt.savefig("tmp/mask.png")

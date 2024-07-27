@@ -13,21 +13,17 @@ def dice_score(pred_mask, gt_mask, epsilon=1e-6):
     Returns:
         float: Dice similarity coefficient.
     """
-    # Convert predicted mask to class labels
+    # Flatten the predicted mask and the ground truth mask
     pred_mask = torch.argmax(pred_mask, dim=1) # torch.Size([16, 256, 256])
     
-    # Flatten the tensors
-    pred_mask = pred_mask.view(-1).float()
-    gt_mask = gt_mask.view(-1).float()
+    # Convert the predicted mask to a binary mask
+    pred_mask[pred_mask > 0.5] = torch.tensor(1.0)
+    pred_mask[pred_mask <= 0.5] = torch.tensor(0.0)
     
-    # Calculate intersection and union
-    intersection = (pred_mask * gt_mask).sum()
-    union = pred_mask.sum() + gt_mask.sum()
-    
-    # Compute Dice coefficient
-    dice = (2. * intersection + epsilon) / (union + epsilon)
-    
-    return dice.item()
+    common_pix = (abs(pred_mask - gt_mask) < epsilon).sum()
+    total_pix = pred_mask.reshape(-1).shape[0] + gt_mask.reshape(-1).shape[0]
+    dice_score = 2 * common_pix / total_pix
+    return dice_score.item()
 
 
 def dice_score_loss(pred_mask, gt_mask):
