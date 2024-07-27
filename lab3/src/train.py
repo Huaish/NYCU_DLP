@@ -5,6 +5,7 @@ import argparse
 import termcolor
 from oxford_pet import load_dataset
 from models.unet import UNet
+from models.resnet34_unet import ResNet34_UNet
 from evaluate import evaluate
 from torch.utils.tensorboard import SummaryWriter
 import datetime
@@ -18,7 +19,7 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}")
     best_score = 0.0
-    model_name = "UNet"
+    model_name = args.model
     
     # Load the data
     print(f"Loading data from {data_path}")
@@ -28,7 +29,12 @@ def train(args):
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
     # Create model, loss function and optimizer
-    model = UNet(in_channels=3, out_channels=2).to(device)
+    print(f"Using model {model_name}")
+    model = None
+    if model_name == "UNet":
+        model = UNet(in_channels=3, out_channels=2).to(device)
+    elif model_name == "ResNet34UNet":
+        model = ResNet34_UNet(in_channels=3, out_channels=2).to(device)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     
@@ -60,7 +66,6 @@ def train(args):
                 # Update the progress bar
                 pbar.update(1)
                 pbar.set_postfix({"Loss": f"{train_loss/(i+1):.4f}", "Dice": f"{train_dice_score:.4f}"})
-                
 
         train_loss /= len(train_dataloader)
         train_dice /= len(train_dataloader)
@@ -71,11 +76,11 @@ def train(args):
         print(termcolor.colored(f"Val Dice: {val_dice:.4f}, Val Loss: {val_loss:.4f}", "green"))
 
         # Save checkpoint
-        torch.save(model.state_dict(), f"../saved_models/latest.pth")
+        torch.save(model.state_dict(), f"../saved_models/{model_name}_latest.pth")
         if val_dice > best_score:
             best_score = val_dice
-            print(termcolor.colored(f"Updating best model with Val Dice: {best_score:.4f}", "green"))
-            torch.save(model.state_dict(), f"../saved_models/best_model.pth")
+            print(termcolor.colored(f"Updating {model_name} best model with Val Dice: {best_score:.4f}", "green"))
+            torch.save(model.state_dict(), f"../saved_models/{model_name}_best_model.pth")
     
         # Log the dice score to tensorboard
         writer.add_scalars(f"Dice Score/{model_name}", {"train": train_dice, "val": val_dice}, epoch)
@@ -84,11 +89,12 @@ def train(args):
     writer.close()
 
 def get_args():
-    parser = argparse.ArgumentParser(description='Train the UNet on images and target masks')
+    parser = argparse.ArgumentParser(description='Train the UNet/ResNet34UNet on images and target masks')
     parser.add_argument('--data_path', type=str, default="../dataset/oxford-iiit-pet", help='path of the input data')
     parser.add_argument('--epochs', '-e', type=int, default=100, help='number of epochs')
     parser.add_argument('--batch_size', '-b', type=int, default=20, help='batch size')
     parser.add_argument('--learning-rate', '-lr', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--model', default='ResNet34UNet', help='model name')
 
     return parser.parse_args()
  
