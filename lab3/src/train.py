@@ -61,25 +61,27 @@ def train(args):
                 pbar.update(1)
                 pbar.set_postfix({"Loss": f"{train_loss/(i+1):.4f}", "Dice": f"{train_dice_score:.4f}"})
                 
+
         train_loss /= len(train_dataloader)
         train_dice /= len(train_dataloader)
-
-        # Save checkpoint
-        torch.save(model.state_dict(), f"../saved_models/latest.pth")
-        if train_dice > best_score:
-            best_score = train_dice
-            print(termcolor.colored(f"Updating best model with Dice: {best_score:.4f}", "green"))
-            torch.save(model.state_dict(), f"../saved_models/best_model.pth")
 
         # Evaluate the model
         val_dice, val_loss = evaluate(model, val_dataloader, device)
         print(termcolor.colored(f"Train Dice: {train_dice:.4f}, Train Loss: {train_loss:.4f}", "yellow"))
         print(termcolor.colored(f"Val Dice: {val_dice:.4f}, Val Loss: {val_loss:.4f}", "green"))
+
+        # Save checkpoint
+        torch.save(model.state_dict(), f"../saved_models/latest.pth")
+        if val_dice > best_score:
+            best_score = val_dice
+            print(termcolor.colored(f"Updating best model with Val Dice: {best_score:.4f}", "green"))
+            torch.save(model.state_dict(), f"../saved_models/best_model.pth")
     
         # Log the dice score to tensorboard
         writer.add_scalars(f"Dice Score/{model_name}", {"train": train_dice, "val": val_dice}, epoch)
         writer.add_scalars(f"Loss/{model_name}", {"train": train_loss, "val": val_loss}, epoch)
-        
+    
+    writer.close()
 
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks')
