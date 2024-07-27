@@ -178,9 +178,16 @@ def load_dataset(data_path, mode):
 
 if __name__ == "__main__":
     data_path = "../dataset/oxford-iiit-pet"
-    mode = "valid"
-    dataset = load_dataset(data_path, mode)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True)
+
+    # Load the dataset
+    train_dataset = load_dataset(data_path, "train")
+    val_dataset = load_dataset(data_path, "valid")
+    test_dataset = load_dataset(data_path, "test")
+    print(f"Train dataset: {len(train_dataset)} images")
+    print(f"Validation dataset: {len(val_dataset)} images")
+    print(f"Test dataset: {len(test_dataset)} images")
+    
+    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
     for batch in dataloader:
         print(batch["image"].shape, batch["mask"].shape)
         break

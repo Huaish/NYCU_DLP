@@ -9,6 +9,7 @@ def dice_score(pred_mask, gt_mask, epsilon=1e-6):
     Args:
         pred_mask (Tensor): predicted  torch.Size([16, 2, 256, 256])
         gt_mask (Tensor): ground truth torch.Size([16, 256, 256])
+        epsilon (float): a small number to avoid division by zero.
         
     Returns:
         float: Dice similarity coefficient.
