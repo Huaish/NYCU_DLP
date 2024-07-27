@@ -209,8 +209,9 @@ pyrightconfig.json
 .lab2
 *.zip
 *.tar.gz
-lab3/dataset/*
+lab3/dataset/oxford-iiit-pet/*
 lab3/runs/*
 lab3/src/tmp
+*.pth
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
