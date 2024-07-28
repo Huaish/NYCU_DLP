@@ -72,19 +72,23 @@ def train(args):
 
         # Evaluate the model
         val_dice, val_loss = evaluate(model, val_dataloader, device)
-        print(termcolor.colored(f"Train Dice: {train_dice:.4f}, Train Loss: {train_loss:.4f}", "yellow"))
+        print(termcolor.colored(f"Train Dice: {train_dice:.4f}, Train Loss: {train_loss:.4f}", "blue"))
         print(termcolor.colored(f"Val Dice: {val_dice:.4f}, Val Loss: {val_loss:.4f}", "green"))
 
         # Save checkpoint
         torch.save(model.state_dict(), f"../saved_models/{model_name}_latest.pth")
         if val_dice > best_score:
             best_score = val_dice
-            print(termcolor.colored(f"Updating {model_name} best model with Val Dice: {best_score:.4f}", "green"))
-            torch.save(model.state_dict(), f"../saved_models/{model_name}_best_model.pth")
+            torch.save(model.state_dict(), f"../saved_models/{model_name}_best.pth")
     
         # Log the dice score to tensorboard
         writer.add_scalars(f"Dice Score/{model_name}", {"train": train_dice, "val": val_dice}, epoch)
         writer.add_scalars(f"Loss/{model_name}", {"train": train_loss, "val": val_loss}, epoch)
+        
+        # Early stopping
+        if val_dice > 0.99:
+            print(termcolor.colored("Dice score > 0.99, stopping training", "yellow"))
+            break
     
     writer.close()
 
@@ -94,7 +98,7 @@ def get_args():
     parser.add_argument('--epochs', '-e', type=int, default=100, help='number of epochs')
     parser.add_argument('--batch_size', '-b', type=int, default=20, help='batch size')
     parser.add_argument('--learning-rate', '-lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--model', default='ResNet34UNet', help='model name')
+    parser.add_argument('--model', default='UNet', help='model name')
 
     return parser.parse_args()
  
