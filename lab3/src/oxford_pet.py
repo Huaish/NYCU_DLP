@@ -7,7 +7,6 @@ from PIL import Image
 from tqdm import tqdm
 from urllib.request import urlretrieve
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 class OxfordPetDataset(torch.utils.data.Dataset):
     def __init__(self, root, mode="train", transform=None):
@@ -33,7 +32,6 @@ class OxfordPetDataset(torch.utils.data.Dataset):
         mask_path = os.path.join(self.masks_directory, filename + ".png")
 
         image = np.array(Image.open(image_path).convert("RGB"))
-
         trimap = np.array(Image.open(mask_path))
         mask = self._preprocess_mask(trimap)
 
@@ -108,7 +106,7 @@ class SimpleOxfordPetDataset(OxfordPetDataset):
         return {
             "image": torch.tensor(sample["image"], dtype=torch.float32),
             "mask": torch.tensor(sample["mask"], dtype=torch.long),
-            # "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
+            "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
         }
 
 
@@ -187,14 +185,14 @@ if __name__ == "__main__":
     print(f"Validation dataset: {len(val_dataset)} images")
     print(f"Test dataset: {len(test_dataset)} images")
     
-    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=16, shuffle=False)
     for batch in dataloader:
         print(batch["image"].shape, batch["mask"].shape)
         break
     
     # Show the first image and mask
     import matplotlib.pyplot as plt
-    plt.imshow(batch["image"][0].permute(1, 2, 0))
+    plt.imshow(batch["image"][0].permute(1, 2, 0).cpu().numpy().astype(np.uint8))
     plt.savefig("tmp/image.png")
     
     plt.imshow(batch["mask"][0])
