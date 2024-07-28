@@ -106,7 +106,7 @@ class SimpleOxfordPetDataset(OxfordPetDataset):
         return {
             "image": torch.tensor(sample["image"], dtype=torch.float32),
             "mask": torch.tensor(sample["mask"], dtype=torch.long),
-            "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
+            # "trimap": torch.tensor(sample["trimap"], dtype=torch.float32),
         }
 
 
