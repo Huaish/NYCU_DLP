@@ -77,6 +77,7 @@ class ResNet34_UNet(nn.Module):
             nn.Conv2d(64, out_channels, kernel_size=1),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(out_channels),
+            nn.Softmax(dim=1)
         )
         
     def _make_layer(self, in_channels, out_channels, blocks, stride):
@@ -94,7 +95,7 @@ class ResNet34_UNet(nn.Module):
             layers.append(ResidualBlock(out_channels, out_channels))
 
         return nn.Sequential(*layers)
-    
+
     def forward(self, x):
         # ResNet34 Encoder
         x = self.conv1(x)
