@@ -162,8 +162,9 @@ def load_dataset(data_path, mode):
         ])
     }
     
-    # Download the dataset if it doesn't exist
-    if not os.path.exists(data_path):
+    # Download the dataset if it doesn't exist or it is empty
+    if not os.path.exists(data_path) or len(os.listdir(data_path)) == 0:
+        print(f"Downloading the Oxford-IIIT Pet Dataset to {data_path}")
         OxfordPetDataset.download(data_path)
         
     # Load the dataset
