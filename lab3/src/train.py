@@ -17,6 +17,7 @@ def train(args):
     batch_size = args.batch_size
     learning_rate = args.learning_rate
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else device)
     print(f"Using device {device}")
     best_score = 0.0
     model_name = args.model

@@ -46,6 +46,9 @@ if __name__ == '__main__':
     data_path = args.data_path
     batch_size = args.batch_size
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else device)
+        
+    print(f"Using device {device}")
     
     # Load the data
     print(f"Loading data from {data_path}")
@@ -60,6 +63,9 @@ if __name__ == '__main__':
         model = UNet(in_channels=3, out_channels=2).to(device)
     elif args.type == "ResNet34UNet":
         model = ResNet34_UNet(in_channels=3, out_channels=2).to(device)
-    model.load_state_dict(torch.load(args.model))
+    model.load_state_dict(torch.load(args.model, map_location=device, weights_only=True))
     
     inference(model, test_dataloader, device)
+    
+# python inference.py --type UNet --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
+# python inference.py --type ResNet34UNet --model ../saved_models/DL_Lab3_ResNet34_UNet_313551097_鄭淮薰.pth

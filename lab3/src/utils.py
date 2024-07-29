@@ -90,6 +90,7 @@ def visualize_pred(model_type, model_path, image):
         device (torch.device): the device (GPU or CPU) on which the data and model are located.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else device)
 
     # Load the model
     model = None
@@ -120,6 +121,9 @@ def visualize_pred(model_type, model_path, image):
     
 def visualize(mode, model_type, model_path, data_path, max_images=4):
     assert mode in ['train', 'valid', 'test', 'predict'], "Invalid mode. Choose from 'train', 'valid', 'test', 'predict'"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else device)
+
     if mode == 'predict':
         # Load the image and resize it
         image = np.array(Image.open(data_path).convert("RGB"))
@@ -210,6 +214,7 @@ if __name__ == "__main__":
     model_path = args.model
     data_path = args.data_path
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else device)
     mode = args.mode
     
     visualize(mode, model_type, model_path, data_path)
