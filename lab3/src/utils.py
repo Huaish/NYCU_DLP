@@ -4,9 +4,10 @@ import torch
 import termcolor
 from PIL import Image
 import matplotlib.pyplot as plt
-from oxford_pet import load_dataset
+from oxford_pet import SimpleOxfordPetDataset
 from models.unet import UNet
 from models.resnet34_unet import ResNet34_UNet
+import albumentations as A
 
 def dice_score(pred_mask, gt_mask, epsilon=1e-6):
     """
@@ -45,7 +46,7 @@ def dice_score_loss(pred_mask, gt_mask):
     """
     return 1 - dice_score(pred_mask, gt_mask)
 
-# Visualize the segmentation masks overlaid on the original image
+
 def visualize_mask(image, mask, alpha=0.5):
     """
     Visualizes the segmentation mask overlaid on the original image.
@@ -66,17 +67,20 @@ def visualize_mask(image, mask, alpha=0.5):
     new_mask = np.zeros((mask.shape[0], mask.shape[1], 4))
     
     # Set the RGB channels of the mask
-    new_mask[mask == 0] = [0, 0, 0, 0]  # Black for the background
-    new_mask[mask == 1] = [255, 0, 0, int(255 * alpha)]  # Red for the object
+    new_mask[mask == 0] = [68, 1, 84, 0]
+    new_mask[mask == 1] = [253, 231, 36, int(255 * alpha)]
 
     mask = Image.fromarray(new_mask.astype(np.uint8), "RGBA")
     
     # Overlay the mask on the image
     result = Image.alpha_composite(image, mask)
     
-    return (np.array(result), np.array(mask), np.array(image))
+    mask = np.array(mask)
+    mask[:, :, 3] = 255
+    
+    return (np.array(image), mask, np.array(result))
 
-def visualize_pred(model_type, model_path, image_path):
+def visualize_pred(model_type, model_path, image):
     """
     Visualizes the predicted segmentation mask overlaid on the original image.
     
@@ -96,14 +100,6 @@ def visualize_pred(model_type, model_path, image_path):
         
     model.load_state_dict(torch.load(model_path))
     
-    # Load the image and resize it
-    image = np.array(Image.open(image_path).convert("RGB"))
-    image = np.array(Image.fromarray(image).resize((256, 256), Image.BILINEAR))
-    
-    # Convert the image to a PyTorch tensor
-    image = torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float() / 255.0
-    image = image.to(device)
-    
     # Perform inference
     model.eval()
     mask = None
@@ -114,7 +110,7 @@ def visualize_pred(model_type, model_path, image_path):
     mask = torch.argmax(mask, dim=1)
 
     # Convert the image, mask, and predicted mask to NumPy arrays
-    image = (image.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+    image = (image.squeeze(0).permute(1, 2, 0).cpu().numpy() * 225).astype(np.uint8)
     mask = mask.squeeze(0).cpu().numpy()
 
     # Visualize the segmentation mask overlaid on the original image
@@ -122,15 +118,91 @@ def visualize_pred(model_type, model_path, image_path):
     
     return result
     
+def visualize(mode, model_type, model_path, data_path, max_images=4):
+    assert mode in ['train', 'valid', 'test', 'predict'], "Invalid mode. Choose from 'train', 'valid', 'test', 'predict'"
+    if mode == 'predict':
+        # Load the image and resize it
+        image = np.array(Image.open(data_path).convert("RGB"))
+        image = np.array(Image.fromarray(image).resize((256, 256), Image.BILINEAR))
+        
+        # Convert the image to a PyTorch tensor
+        image = torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+        image = image.to(device)
+
+        # Visualize predicted mask on the unseen image ( without ground truth mask )
+        image, pred_mask, pred_overlay = visualize_pred(model_type, model_path, image)
+
+        # Save the images using subplot
+        fig, ax = plt.subplots(1, 3, figsize=(10, 5))
+        ax[0].imshow(image)
+        ax[0].axis("off")
+        ax[0].set_title("Original Image")
+        
+        ax[1].imshow(pred_mask)
+        ax[1].axis("off")
+        ax[1].set_title("Predicted Mask")
+        
+        ax[2].imshow(pred_overlay)
+        ax[2].axis("off")
+        ax[2].set_title("Predicted Mask Overlay")
+        
+        plt.savefig(f"tmp/{model_type}_result.png", bbox_inches='tight')
+        
+    else:
+        # Visualize predicted mask on the train/val/test dataset ( with ground truth mask )
+        val_dataset = SimpleOxfordPetDataset(data_path, mode=mode, transform=A.Compose([A.Resize(256, 256),]))
+        dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True)
+        
+        for i, batch in enumerate(dataloader):
+            if i == max_images:
+                break
+            
+            image = batch["image"] / 255.0
+            image, pred_mask, pred_overlay = visualize_pred(model_type, model_path, image.to(device))
+            _, gt_mask, gt_overlay = visualize_mask(image, batch["mask"].squeeze(0).numpy())
+
+            # Save the images using subplot
+            fig, ax = plt.subplots(2, 3, figsize=(15, 10))
+            ax[0,0].imshow(image)
+            ax[0,0].axis("off")
+            ax[0,0].set_title("Original Image")
+            
+            ax[0,1].imshow(pred_mask)
+            ax[0,1].axis("off")
+            ax[0,1].set_title("Predicted Mask")
+            
+            ax[0,2].imshow(pred_overlay)
+            ax[0,2].axis("off")
+            ax[0,2].set_title("Predicted Mask Overlay")
+            
+            ax[1,0].imshow(image)
+            ax[1,0].axis("off")
+            ax[1,0].set_title("Original Image")
+
+            ax[1,1].imshow(gt_mask)
+            ax[1,1].axis("off")
+            ax[1,1].set_title("Ground Truth Mask")
+            
+            ax[1,2].imshow(gt_overlay)
+            ax[1,2].axis("off")
+            ax[1,2].set_title("Ground Truth Mask Overlay")
+                    
+            
+            plt.savefig(f"tmp/{model_type}_result_{i}.png", bbox_inches='tight')
+
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
     parser.add_argument('--type', default='ResNet34UNet', help='model type(UNet or ResNet34UNet)')
+    parser.add_argument('--mode', default='test', help='mode(train, valid, test, predict)')
     parser.add_argument('--model', default='../saved_models/ResNet34UNet_latest.pth', help='path to the stored model weoght')
     parser.add_argument('--data_path', type=str, default="../dataset/oxford-iiit-pet", help='path to the input data')
-    parser.add_argument('--image_path', type=str, default="../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg", help='path to the input image')
-    parser.add_argument('--batch_size', '-b', type=int, default=20, help='batch size')
+    parser.add_argument('--max_images', type=int, default=4, help='number of images to visualize')
+    parser.add_argument('--seed', type=int, default=16, help='seed for reproducibility')
+
+    args = parser.parse_args()
+    torch.manual_seed(args.seed)
     
-    return parser.parse_args()
+    return args
     
 if __name__ == "__main__":
     args = get_args()
@@ -138,63 +210,11 @@ if __name__ == "__main__":
     model_path = args.model
     data_path = args.data_path
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    overlay, mask, image = visualize_pred(args.type, args.model, args.image_path)
-    # Save the images using subplot
-    fig, ax = plt.subplots(1, 3, figsize=(10, 5))
-    ax[0].imshow(overlay)
-    ax[0].axis("off")
-    ax[0].set_title("Predicted Mask")
+    mode = args.mode
     
-    ax[1].imshow(mask)
-    ax[1].axis("off")
-    ax[1].set_title("Ground Truth Mask")
+    visualize(mode, model_type, model_path, data_path)
     
-    ax[2].imshow(image)
-    ax[2].axis("off")
-    ax[2].set_title("Original Image")
-    
-    
-    plt.savefig("result.png", bbox_inches='tight')
-
-    # # Load the model
-    # model = None
-    # if model_type == "UNet":
-    #     model = UNet(in_channels=3, out_channels=2).to(device)
-    # elif model_type == "ResNet34UNet":
-    #     model = ResNet34_UNet(in_channels=3, out_channels=2).to(device)
-        
-    # model.load_state_dict(torch.load(model_path))
-
-    # from inference import inference
-    # val_dataset = load_dataset(data_path, "valid")
-    # dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False)
-    # outputs, dice_scores = inference(model, dataloader, device, eval=True)
-    
-    # image = (val_dataset[0]["image"].permute(1, 2, 0).cpu().numpy())
-    # image = (image - image.min()) / (image.max() - image.min()) * 255
-    # image = image.astype(np.uint8)
-    # pred = outputs[0]
-    # mask = val_dataset[0]["mask"]
-    
-
-    # # Predict masks overlaid on the original image
-    # image_pred = visualize_mask(image, pred)
-
-    # # GT masks overlaid on the original image
-    # result_mask = visualize_mask(image, mask)
-    
-    # # Save the images using subplot
-    # fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-    # ax[0].imshow(image_pred)
-    # ax[0].axis("off")
-    # ax[0].set_title("Predicted Mask")
-    
-    # ax[1].imshow(result_mask)
-    # ax[1].axis("off")
-    # ax[1].set_title("Ground Truth Mask")
-    
-    # plt.savefig("result.png", bbox_inches='tight')
-    
-    
-    
+# python utils.py --type UNet --mode test --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
+# python utils.py --type ResNet34UNet --mode test --model ../saved_models/DL_Lab3_ ResNet34_UNet _313551097_鄭淮薰.pth
+# python utils.py --type UNet --mode predict --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg
+# python utils.py --type ResNet34UNet --mode predict --model ../saved_models/DL_Lab3_ ResNet34_UNet _313551097_鄭淮薰.pth --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg
