@@ -566,6 +566,12 @@ Also, I did not apply common data augmentation techniques like `VerticalFlip` tr
 
 ### A. What did you explore during the training process?
 
+![train process](img/train_process.png)
+
+From the training process, we can see that the model's dice score on the training data increases over time. Also, the model's dice score on the validation data increases as well, which indicates that the model is learning the features of the data and generalizing well to unseen data.
+
+Furthermore, we can see that the UNet model's curve is relatively steeper than the ResNet34_UNet model's curve, which indicates that the UNet model learns faster than the ResNet34_UNet model. However, by the end of the training process, both models achieve similar Dice Scores, indicating that both models are capable of effectively completing the task.
+
 ### B. Found any characteristics of the data?
 
 I found the features of the Oxford-IIIT Pet Dataset to be as follows:
@@ -577,6 +583,20 @@ I found the features of the Oxford-IIIT Pet Dataset to be as follows:
 5. The brightness and contrast of the pictures vary, some pictures are brighter and some are darker.
 
 Through these characteristics, I believe that forward planning, resizing, brightness, contrast and other enhancement techniques of the pictures before training can help the model better learn the characteristics of cats or dogs in the pictures and improve the accuracy of the model.
+
+### C. Evaluate the model performance on the test data
+
+From the figure below, we can clearly see that the ResNet34_UNet model performs slightly better than the UNet model in segmentation results. The ResNet34_UNet model can better capture the boundaries between cats and dogs in images and produce more accurate segmentation masks.
+
+| UNet Visualization Results (Avg. Dice Score: 0.9286) |
+| :--------------------------------------------------: |
+|       ![UNet result 0](img/UNet_result_0.png)        |
+|       ![UNet result 3](img/UNet_result_3.png)        |
+
+| ResNet34_UNet Visualization Results (Avg. Dice Score: 0.9336) |
+| :-----------------------------------------------------------: |
+|   ![ResNet34+UNet result 0](img/ResNet34UNet_result_0.png)    |
+|   ![ResNet34+UNet result 3](img/ResNet34UNet_result_3.png)    |
 
 ## 5. Execution command
 
@@ -594,11 +614,17 @@ Through these characteristics, I believe that forward planning, resizing, bright
 python train.py --model UNet
 ```
 
+![unet train](img/unet_train.png)
+
+---
+
 **Training ResNet34_UNet**
 
 ```sh
 python train.py --model ResNet34UNet
 ```
+
+![resnet34+unet train](img/resnet_train.png)
 
 ### B. The command and parameters for the inference process
 
@@ -609,20 +635,64 @@ python train.py --model ResNet34UNet
 **Inference UNet**
 
 ```sh
-python3 inference.py --type UNet --model ../saved_models/UNet_latest.pth
+python inference.py --type UNet
+     --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
 ```
+
+![UNet inference](img/UNet_inference.png)
 
 **Inference ResNet34_UNet**
 
 ```sh
-python3 inference.py --type ResNet34UNet --model ../saved_models/ResNet34UNet_latest.pth
+python inference.py --type ResNet34UNet\
+    --model ../saved_models/DL_Lab3_ResNet34_UNet_313551097_鄭淮薰.pth
 ```
+
+![Resnet34+Unet inference](img/ResnetUNet_inference.png)
+
+### C. Visualization of the results
+
+I implemented the `visualize` function in the `utils.py` file to visualize the results of the model on the test data. The function outputs the original image, the ground truth mask, the predicted mask, and the overlay of the predicted mask on the original image.
+
+**UNet Results**
+
+```sh
+python utils.py --type UNet --mode test \
+        --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
+```
+
+![UNet result 2](img/UNet_result_2.png)
+
+---
+
+**ResNet34_UNet Results**
+
+```sh
+python utils.py --type ResNet34UNet --mode test\
+    --model ../saved_models/DL_Lab3_ ResNet34_UNet _313551097_鄭淮薰.pth
+```
+
+![ResNet34+UNet result 2](img/ResNet34UNet_result_2.png)
+
+---
+
+Also, we can use the `predict` mode to predict the mask of an arbitrary image.
+
+```sh
+python utils.py --type UNet --mode predict \
+    --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth \
+    --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg
+```
+
+![UNet result](img/UNet_result.png)
 
 ## 6. Discussion
 
 ### A. What architecture may bring better results?
 
-From the results table below, we can see that the ResNet34_UNet model achieves a little higher than the UNet model in terms of the Dice score. I think that is because the ResNet34 encoder employs residual blocks, which help to alleviate the vanishing gradient problem and enable the model to learn more complex features.
+From the results above, we can see that the ResNet34_UNet model achieves a slightly higher than the UNet model in terms of the Dice score. I think that is because the ResNet34 encoder employs residual blocks, which help to alleviate the vanishing gradient problem and enable the model to learn more complex features.
+
+For more complex tasks, I think we can use deeper ResNet architectures like ResNet50 or ResNet101 as the encoder part of the UNet model to capture more complex features and improve the segmentation results. We can also do more advanced data augmentation techniques, such as CutMix, Mixup, etc., to increase the diversity of the training data and improve the model's generalization performance.
 
 ### B. What are the potential research topics in this task?
 
