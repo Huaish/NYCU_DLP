@@ -174,7 +174,7 @@ if args.type == "UNet":
     model = UNet(in_channels=3, out_channels=2).to(device)
 elif args.type == "ResNet34UNet":
     model = ResNet34_UNet(in_channels=3, out_channels=2).to(device)
-model.load_state_dict(torch.load(args.model))
+model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
 
 inference(model, test_dataloader, device)
 ```

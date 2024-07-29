@@ -193,7 +193,7 @@ if __name__ == "__main__":
     # Show the first image and mask
     import matplotlib.pyplot as plt
     plt.imshow(batch["image"][0].permute(1, 2, 0).cpu().numpy().astype(np.uint8))
-    plt.savefig("tmp/image.png")
+    plt.savefig("image.png")
     
     plt.imshow(batch["mask"][0])
-    plt.savefig("tmp/mask.png")
+    plt.savefig("mask.png")

@@ -99,7 +99,7 @@ def visualize_pred(model_type, model_path, image):
     elif model_type == "ResNet34UNet":
         model = ResNet34_UNet(in_channels=3, out_channels=2).to(device)
         
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     
     # Perform inference
     model.eval()
@@ -150,7 +150,7 @@ def visualize(mode, model_type, model_path, data_path, max_images=4):
         ax[2].axis("off")
         ax[2].set_title("Predicted Mask Overlay")
         
-        plt.savefig(f"tmp/{model_type}_result.png", bbox_inches='tight')
+        plt.savefig(f"{model_type}_result.png", bbox_inches='tight')
         
     else:
         # Visualize predicted mask on the train/val/test dataset ( with ground truth mask )
@@ -192,7 +192,7 @@ def visualize(mode, model_type, model_path, data_path, max_images=4):
             ax[1,2].set_title("Ground Truth Mask Overlay")
                     
             
-            plt.savefig(f"tmp/{model_type}_result_{i}.png", bbox_inches='tight')
+            plt.savefig(f"{model_type}_result_{i}.png", bbox_inches='tight')
 
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
@@ -220,6 +220,6 @@ if __name__ == "__main__":
     visualize(mode, model_type, model_path, data_path)
     
 # python utils.py --type UNet --mode test --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
-# python utils.py --type ResNet34UNet --mode test --model ../saved_models/DL_Lab3_ ResNet34_UNet _313551097_鄭淮薰.pth
+# python utils.py --type ResNet34UNet --mode test --model ../saved_models/DL_Lab3_ResNet34_UNet_313551097_鄭淮薰.pth
 # python utils.py --type UNet --mode predict --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg
-# python utils.py --type ResNet34UNet --mode predict --model ../saved_models/DL_Lab3_ ResNet34_UNet _313551097_鄭淮薰.pth --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg
+# python utils.py --type ResNet34UNet --mode predict --model ../saved_models/DL_Lab3_ResNet34_UNet_313551097_鄭淮薰.pth --data_path ../dataset/oxford-iiit-pet/images/Abyssinian_2.jpg

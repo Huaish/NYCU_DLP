@@ -106,3 +106,6 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     train(args)
+    
+# python train.py --model UNet
+# python train.py --model ResNet34UNet
