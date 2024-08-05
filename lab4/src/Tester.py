@@ -36,12 +36,6 @@ from glob import glob
 from torch.utils.data import Dataset as torchData
 from torchvision.datasets.folder import default_loader as imgloader
 
-def Generate_PSNR(imgs1, imgs2, data_range=1.):
-    """PSNR for torch tensor"""
-    mse = nn.functional.mse_loss(imgs1, imgs2) # wrong computation for batch size > 1
-    psnr = 20 * log10(data_range) - 10 * torch.log10(mse)
-    return psnr
-
 class Dataset_Dance(torchData):
     def __init__(self, root, transform, mode='test', video_len=7, partial=1.0):
         super().__init__()
@@ -100,26 +94,18 @@ class Test_model(VAE_Model):
     def eval(self):
         val_loader = self.val_dataloader()
         pred_seq_list = []
-        psnr_list = []
 
         for idx, (img, label) in enumerate(tqdm(val_loader, ncols=80)):
             img = img.to(self.args.device)
             label = label.to(self.args.device)
-            pred_seq, psnr = self.val_one_step(img, label, idx)
+            pred_seq = self.val_one_step(img, label, idx)
             pred_seq_list.append(pred_seq)
-            psnr_list.append(psnr)
         
         # submission.csv is the file you should submit to kaggle
         pred_to_int = (np.rint(torch.cat(pred_seq_list).numpy()*255)).astype(int)
         df = pd.DataFrame(pred_to_int)
         df.insert(0, 'id', range(0, len(df)))
         df.to_csv(os.path.join(self.args.save_root, f'submission.csv'), header=True, index=False)
-        
-        # Print the average PSNR
-        print(TA_)
-        for idx, psnr in enumerate(psnr_list):
-            print(f"PSNR of seq{idx}: {psnr}")
-        print(f"Average PSNR: {np.mean(psnr_list)}")
     
     def val_one_step(self, img, label, idx=0):
         img = img.permute(1, 0, 2, 3, 4) # change tensor into (seq, B, C, H, W)
@@ -133,7 +119,6 @@ class Test_model(VAE_Model):
         decoded_frame_list = [img[0].cpu()]
         label_list = [label[0].cpu()]
 
-        psnr = []
         for i in range(1, label.shape[0]):
             current_label = label[i]
             prev_frame = decoded_frame_list[-1].to(self.args.device)
@@ -155,9 +140,6 @@ class Test_model(VAE_Model):
             # Append the generated frame to the decoded_frame_list
             decoded_frame_list.append(generated_frame.cpu())
             label_list.append(label[i].cpu())
-            
-            # Calculate the PSNR
-            psnr.append(Generate_PSNR(decoded_frame_list[-1], label_list[-1]))
 
         # Please do not modify this part, it is used for visulization
         generated_frame = stack(decoded_frame_list).permute(1, 0, 2, 3, 4)
@@ -170,7 +152,7 @@ class Test_model(VAE_Model):
         # Reshape the generated frame to (630, 3 * 64 * 32)
         generated_frame = generated_frame.reshape(630, -1)
         
-        return generated_frame, np.mean(psnr)
+        return generated_frame
                 
     def make_gif(self, images_list, img_name):
         new_list = []
