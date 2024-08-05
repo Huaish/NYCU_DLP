@@ -360,6 +360,7 @@ class VAE_Model(nn.Module):
         plt.ylabel('PSNR')
         plt.title('Per frame Quality(PSNR)')
         plt.savefig('PSNR_per_frame.png')
+        plt.close()
 
 def main(args):
     
