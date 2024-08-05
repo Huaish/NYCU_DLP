@@ -78,7 +78,7 @@ class kl_annealing():
         step_in_cycle = iter % cycle_length
 
         if step_in_cycle < cycle_length * ratio:
-            return start + (stop - start) * step_in_cycle / (cycle_length * ratio)
+            return max(1e-6, start + (stop - start) * step_in_cycle / (cycle_length * ratio))
         else:
             return stop
 
@@ -115,13 +115,13 @@ class VAE_Model(nn.Module):
         self.batch_size = args.batch_size
         
         # Initialize the tensorboard
-        self.writer = SummaryWriter(f"../runs/kl_anneal_{args.kl_anneal_type}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}")
+        self.writer = SummaryWriter(args.tensorboard_path)
 
     def forward(self, img, label):
         pass
     
     def training_stage(self):
-        for i in range(self.args.num_epoch):
+        for i in range(self.current_epoch, self.args.num_epoch):
             train_loader = self.train_dataloader()
             adapt_TeacherForcing = True if random.random() < self.tfr else False
             
@@ -378,7 +378,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument('--batch_size',    type=int,    default=2)
     parser.add_argument('--lr',            type=float,  default=0.001,     help="initial learning rate")
-    parser.add_argument('--device',        type=str, choices=["cuda", "cpu"], default="cuda")
+    parser.add_argument('--device',        type=str, choices=["cuda", "cpu", "cuda:1"], default="cuda")
     parser.add_argument('--optim',         type=str, choices=["Adam", "AdamW"], default="Adam")
     parser.add_argument('--gpu',           type=int, default=1)
     parser.add_argument('--test',          action='store_true')
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     parser.add_argument('--DR',            type=str, required=True,  help="Your Dataset Path")
     parser.add_argument('--save_root',     type=str, required=True,  help="The path to save your data")
     parser.add_argument('--num_workers',   type=int, default=4)
-    parser.add_argument('--num_epoch',     type=int, default=70,     help="number of total epoch")
+    parser.add_argument('--num_epoch',     type=int, default=400,     help="number of total epoch")
     parser.add_argument('--per_save',      type=int, default=3,      help="Save checkpoint every seted epoch")
     parser.add_argument('--partial',       type=float, default=1.0,  help="Part of the training dataset to be trained")
     parser.add_argument('--train_vi_len',  type=int, default=16,     help="Training video length")
@@ -415,11 +415,25 @@ if __name__ == '__main__':
     # Kl annealing stratedy arguments
     parser.add_argument('--kl_anneal_type',     type=str, default='Cyclical', choices=['Cyclical', 'Monotonic', 'None'], help="KL annealing strategy")
     parser.add_argument('--kl_anneal_cycle',    type=int, default=10,               help="")
-    parser.add_argument('--kl_anneal_ratio',    type=float, default=1,              help="")
+    parser.add_argument('--kl_anneal_ratio',    type=float, default=0.5,              help="")
     
-
-    
+    # Tensorboard arguments
+    parser.add_argument('--tensorboard',        default=True, action='store_true', help="Use tensorboard to visualize the training process")
+    parser.add_argument('--tensorboard_path',   type=str, default=None,        help="The path to save the tensorboard logs")
 
     args = parser.parse_args()
     
+    if args.tensorboard:
+        if args.tensorboard_path == None:
+            args.tensorboard_path = f"../runs/{args.kl_anneal_type}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}"
+    
     main(args)
+    
+    # Test the kl_annealing class
+    # writer = SummaryWriter(f"../runs/kl_annealing_test")
+    # kl = kl_annealing(args)
+    # for i in range(args.num_epoch):
+    #     writer.add_scalar('beta', kl.get_beta(), i)
+    #     print(f"{i}: {kl.get_beta()}")
+    #     kl.update()
+    # writer.close()
