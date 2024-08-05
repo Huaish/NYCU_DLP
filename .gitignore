@@ -213,5 +213,8 @@ lab3/dataset/oxford-iiit-pet/*
 lab3/runs/*
 lab3/src/tmp
 *.pth
+lab4/dataset/*
+*.ckpt
+events.*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
