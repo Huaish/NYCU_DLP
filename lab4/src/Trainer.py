@@ -260,7 +260,7 @@ class VAE_Model(nn.Module):
                 # Compute loss
                 mse_loss += self.mse_criterion(generated_frame, current_frame)
                 kl_loss += kl_criterion(mu, logvar, self.batch_size)
-                psnr.append(Generate_PSNR(generated_frame, current_frame))
+                psnr.append(Generate_PSNR(generated_frame, current_frame).cpu())
                 
                 # Update the last frame
                 last_frame = generated_frame
