@@ -19,6 +19,8 @@ import imageio
 
 import matplotlib.pyplot as plt
 from math import log10
+from torch.utils.tensorboard import SummaryWriter
+import datetime
 
 def Generate_PSNR(imgs1, imgs2, data_range=1.):
     """PSNR for torch tensor"""
@@ -35,21 +37,51 @@ def kl_criterion(mu, logvar, batch_size):
 
 class kl_annealing():
     def __init__(self, args, current_epoch=0):
-        # TODO
-        raise NotImplementedError
+        self.iter = current_epoch
+        self.n_iter = args.num_epoch
+        self.beta = 1 if args.kl_anneal_type == 'None' else 0
+        self.beta_start = 0.
+        self.beta_end = 1.
+        self.kl_anneal_type = args.kl_anneal_type
+        self.kl_anneal_cycle = args.kl_anneal_cycle
+        self.kl_anneal_ratio = args.kl_anneal_ratio
         
     def update(self):
-        # TODO
-        raise NotImplementedError
+        self.iter += 1
+        if self.kl_anneal_type == 'Cyclical':
+            self.beta = self.frange_cycle_linear(self.iter, self.n_iter, start=self.beta_start, stop=self.beta_end, n_cycle=self.kl_anneal_cycle, ratio=self.kl_anneal_ratio)
+        elif self.kl_anneal_type == 'Monotonic':
+            self.beta = self.frange_cycle_linear(self.iter, self.n_iter, start=self.beta_start, stop=self.beta_end, n_cycle=1, ratio=self.kl_anneal_ratio)
+        else:
+            self.beta = 1
+        
     
     def get_beta(self):
-        # TODO
-        raise NotImplementedError
+        return self.beta
 
-    def frange_cycle_linear(self, n_iter, start=0.0, stop=1.0,  n_cycle=1, ratio=1):
-        # TODO
-        raise NotImplementedError
+    def frange_cycle_linear(self, iter, n_iter, start=0.0, stop=1.0,  n_cycle=1, ratio=1.):
+        """Linearly anneal the value from start to stop in n_cycle period
+
+        Args:
+            iter (int): Current iteration
+            n_iter (int): Total number of iteration
+            start (float, optional): Starting value of the sequence. Defaults to 0.0.
+            stop (float, optional): Stopping value of the sequence. Defaults to 1.0.
+            n_cycle (int, optional): Number of cycles. Defaults to 1.
+            ratio (float, optional): Ratio of increasing phase to total cycle length. Defaults to 1.
+
+        Returns:
+            float: Annealed value
+        """
         
+        cycle_length = n_iter // n_cycle
+        step_in_cycle = iter % cycle_length
+
+        if step_in_cycle < cycle_length * ratio:
+            return start + (stop - start) * step_in_cycle / (cycle_length * ratio)
+        else:
+            return stop
+
 
 class VAE_Model(nn.Module):
     def __init__(self, args):
@@ -82,7 +114,9 @@ class VAE_Model(nn.Module):
         self.val_vi_len   = args.val_vi_len
         self.batch_size = args.batch_size
         
-        
+        # Initialize the tensorboard
+        self.writer = SummaryWriter(f"../runs/kl_anneal_{args.kl_anneal_type}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}")
+
     def forward(self, img, label):
         pass
     
@@ -111,6 +145,10 @@ class VAE_Model(nn.Module):
             self.teacher_forcing_ratio_update()
             self.kl_annealing.update()
             
+            # Logging the loss to tensorboard
+            self.writer.add_scalar('Loss/train', loss, self.current_epoch)
+            self.writer.add_scalar('TFR', self.tfr, self.current_epoch)
+            self.writer.add_scalar('Beta', beta, self.current_epoch)
             
     @torch.no_grad()
     def eval(self):
@@ -120,14 +158,125 @@ class VAE_Model(nn.Module):
             label = label.to(self.args.device)
             loss = self.val_one_step(img, label)
             self.tqdm_bar('val', pbar, loss.detach().cpu(), lr=self.scheduler.get_last_lr()[0])
+            self.writer.add_scalar('Loss/val', loss, self.current_epoch)
     
-    def training_one_step(self, img, label, adapt_TeacherForcing):
-        # TODO
-        raise NotImplementedError
+    def training_one_step(self, batch_images, batch_labels, adapt_TeacherForcing):
+        """Training one step of the model
+
+        Args:
+            batch_images (torch.Tensor): Input image (B, T, C, H, W) => (2, 16, 3, 256, 256)
+            batch_labels (torch.Tensor): Input label (Batch size, Time step, Channel, Height, Width)
+            adapt_TeacherForcing (bool): Whether to adapt teacher forcing strategy
+
+        Returns:
+            torch.Tensor: Loss value
+        """
+        
+        beta = self.kl_annealing.get_beta()
+        total_loss = 0
+        
+        for (images, labels) in (zip(batch_images, batch_labels)):
+            mse_loss, kl_loss = 0., 0.
+            
+            # Take the first frame as the initial last frame
+            last_frame = images[0, :, :, :].unsqueeze(0)
+            for i in range(1, self.train_vi_len):
+                current_frame = images[i, :, :, :].unsqueeze(0)
+                current_label = labels[i, :, :, :].unsqueeze(0)
+                
+                # Transform the image from RGB-domain to feature-domain
+                last_frame_feature = self.frame_transformation(last_frame)
+                current_frame_feature = self.frame_transformation(current_frame)
+                current_label_feature = self.label_transformation(current_label)
+                
+                # Conduct Posterior prediction in Encoder
+                z, mu, logvar = self.Gaussian_Predictor(current_frame_feature, current_label_feature)
+
+                # Decoder Fusion
+                output = self.Decoder_Fusion(last_frame_feature, current_label_feature, z)
+
+                # Generative model
+                generated_frame = self.Generator(output)
+
+                # Compute loss
+                mse_loss += self.mse_criterion(generated_frame, current_frame)
+                kl_loss += kl_criterion(mu, logvar, self.batch_size)
+
+                # Update the last frame with teacher forcing strategy
+                if adapt_TeacherForcing:
+                    last_frame = current_frame
+                else:
+                    last_frame = generated_frame
+
+            # Compute one loss of the mini-batch
+            loss = mse_loss + beta * kl_loss
+            total_loss += loss
+
+            # Backward
+            self.optim.zero_grad()
+            loss.backward()
+            self.optimizer_step()
+
+        return total_loss / len(batch_images)
     
-    def val_one_step(self, img, label):
-        # TODO
-        raise NotImplementedError
+    def val_one_step(self, batch_images, batch_labels):
+        """Validation one step of the model
+
+        Args:
+            batch_images (torch.Tensor): Input image (B, T, C, H, W)
+            batch_labels (torch.Tensor): Input label (B, T, C, H, W)
+
+        Returns:
+            torch.Tensor: Avg. loss value
+        """
+
+        total_loss = 0.
+        psnr = []
+
+        beta = self.kl_annealing.get_beta()
+        for images, labels in zip(batch_images, batch_labels):
+            mse_loss, kl_loss = 0., 0.
+            
+            # Take the first frame as the initial last frame
+            last_frame = images[0, :, :, :].unsqueeze(0)
+            for i in range(1, self.val_vi_len):
+                current_frame = images[i, :, :, :].unsqueeze(0)
+                current_label = labels[i, :, :].unsqueeze(0)
+                
+                # Transform the image from RGB-domain to feature-domain
+                last_frame_features = self.frame_transformation(last_frame)
+                current_frame_features = self.frame_transformation(current_frame)
+                current_label_features = self.label_transformation(current_label)
+                
+                # Conduct Posterior prediction in Encoder
+                z, mu, logvar = self.Gaussian_Predictor(current_frame_features, current_label_features)
+                
+                # Decoder Fusion
+                output = self.Decoder_Fusion(last_frame_features, current_label_features, z)
+                
+                # Generative model
+                generated_frame = self.Generator(output)
+                
+                # Compute loss
+                mse_loss += self.mse_criterion(generated_frame, current_frame)
+                kl_loss += kl_criterion(mu, logvar, self.batch_size)
+                psnr.append(Generate_PSNR(generated_frame, current_frame))
+                
+                # Update the last frame
+                last_frame = generated_frame
+                
+                # Logging the generated frame and PSNR to tensorboard
+                self.writer.add_image(f'Generated Frame/epoch-{self.current_epoch}', generated_frame.squeeze(0), i, dataformats='CHW')
+                self.writer.add_scalar(f'PSNR/epoch-{self.current_epoch}', Generate_PSNR(generated_frame, current_frame), i)
+                
+            # Compute one loss of the mini-batch
+            loss = mse_loss + beta * kl_loss
+            total_loss += loss
+
+        # Plot the PSNR per frame
+        self.plot_PSNR_per_frame(psnr)
+        return total_loss / len(batch_images)
+        
                 
     def make_gif(self, images_list, img_name):
         new_list = []
@@ -169,8 +318,8 @@ class VAE_Model(nn.Module):
         return val_loader
     
     def teacher_forcing_ratio_update(self):
-        # TODO
-        raise NotImplementedError
+        if self.current_epoch >= self.tfr_sde:
+            self.tfr = max(0, self.tfr - self.tfr_d_step)
             
     def tqdm_bar(self, mode, pbar, loss, lr):
         pbar.set_description(f"({mode}) Epoch {self.current_epoch}, lr:{lr}" , refresh=False)
@@ -203,7 +352,14 @@ class VAE_Model(nn.Module):
         nn.utils.clip_grad_norm_(self.parameters(), 1.)
         self.optim.step()
 
-
+    def plot_PSNR_per_frame(self, psnr_list):
+        avg_psnr = np.mean(psnr_list)
+        plt.plot(psnr_list, label='Avg_PSNR: {:.3f}'.format(avg_psnr))
+        plt.legend()
+        plt.xlabel('Frame index')
+        plt.ylabel('PSNR')
+        plt.title('Per frame Quality(PSNR)')
+        plt.savefig('PSNR_per_frame.png')
 
 def main(args):
     
@@ -257,7 +413,7 @@ if __name__ == '__main__':
     parser.add_argument('--fast_train_epoch',   type=int, default=5,        help="Number of epoch to use fast train mode")
     
     # Kl annealing stratedy arguments
-    parser.add_argument('--kl_anneal_type',     type=str, default='Cyclical',       help="")
+    parser.add_argument('--kl_anneal_type',     type=str, default='Cyclical', choices=['Cyclical', 'Monotonic', 'None'], help="KL annealing strategy")
     parser.add_argument('--kl_anneal_cycle',    type=int, default=10,               help="")
     parser.add_argument('--kl_anneal_ratio',    type=float, default=1,              help="")
     

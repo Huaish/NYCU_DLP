@@ -76,8 +76,18 @@ class Gaussian_Predictor(nn.Sequential):
         )
         
     def reparameterize(self, mu, logvar):
-        # TODO
-        raise NotImplementedError
+        """由於 sample 不可微分，無法透過反向傳播來更新梯度，因此改採用 reparameterize 的方式，因此將 random sample 的操作轉移至一個確定的函數中, i.e. 將從 N(0,1) 中 sample 出來的 random noise (z) 做一個線性轉換，使得 z 的分布接近於 N(mu, sigma^2)
+
+        Args:
+            mu (torch.Tensor): mean
+            logvar (torch.Tensor): log variance
+        
+        Returns:
+            torch.Tensor: reparameterized sample
+        """
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
 
     def forward(self, img, label):
         feature = torch.cat([img, label], dim=1)
