@@ -174,6 +174,7 @@ class VAE_Model(nn.Module):
         
         beta = self.kl_annealing.get_beta()
         total_loss = 0
+        total_mse_loss, total_kl_loss = 0., 0.
         
         for (images, labels) in (zip(batch_images, batch_labels)):
             mse_loss, kl_loss = 0., 0.
@@ -211,11 +212,16 @@ class VAE_Model(nn.Module):
             # Compute one loss of the mini-batch
             loss = mse_loss + beta * kl_loss
             total_loss += loss
+            total_mse_loss += mse_loss
+            total_kl_loss += kl_loss
 
             # Backward
             self.optim.zero_grad()
             loss.backward()
             self.optimizer_step()
+            
+        # Logging mse and kl loss to tensorboard
+        self.writer.add_scalars('Loss', {'mse': total_mse_loss, 'kl': total_kl_loss}, self.current_epoch)
 
         return total_loss / len(batch_images)
     
@@ -416,7 +422,7 @@ if __name__ == '__main__':
     # Kl annealing stratedy arguments
     parser.add_argument('--kl_anneal_type',     type=str, default='Cyclical', choices=['Cyclical', 'Monotonic', 'None'], help="KL annealing strategy")
     parser.add_argument('--kl_anneal_cycle',    type=int, default=10,               help="")
-    parser.add_argument('--kl_anneal_ratio',    type=float, default=0.5,              help="")
+    parser.add_argument('--kl_anneal_ratio',    type=float, default=1,              help="")
     
     # Tensorboard arguments
     parser.add_argument('--tensorboard',        default=True, action='store_true', help="Use tensorboard to visualize the training process")
@@ -426,10 +432,10 @@ if __name__ == '__main__':
     
     if args.tensorboard:
         if args.tensorboard_path == None:
-            args.tensorboard_path = f"../runs/{args.kl_anneal_type}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}"
+            args.tensorboard_path = f"../runs/{args.kl_anneal_type}_{args.kl_anneal_ratio}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
     
     main(args)
-    
+
     # Test the kl_annealing class
     # writer = SummaryWriter(f"../runs/kl_annealing_test")
     # kl = kl_annealing(args)
