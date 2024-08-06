@@ -175,11 +175,11 @@ class VAE_Model(nn.Module):
                 wandb.log({'Train Loss': train_loss, 'Train MSE Loss': train_mse_loss, 'Train KL Loss': train_kl_loss})
                 wandb.log({'Val Loss': val_loss, 'Val MSE Loss': val_mse_loss, 'Val KL Loss': val_kl_loss, 'Val PSNR': val_psnr})
                 wandb.log({'TFR': self.tfr, 'Beta': beta})
-                if self.args.store_visualization and self.current_epoch % 5 == 0:
-                    if os.path.exists('PSNR_per_frame.png'):
-                        wandb.log({'PSNR_per_frame': wandb.Image('PSNR_per_frame.png')})
-                    if os.path.exists('generated.gif'):
-                        wandb.log({'Generated_GIF': wandb.Video('generated.gif')})
+                if self.args.store_visualization and self.current_epoch % 5 == 1:
+                    if os.path.exists(f'PSNR_per_frame_{self.args.run_id}.png'):
+                        wandb.log({'PSNR_per_frame': wandb.Image(f'PSNR_per_frame_{self.args.run_id}.png')})
+                    if os.path.exists(f'generated_{self.args.run_id}.gif'):
+                        wandb.log({'Generated_GIF': wandb.Video(f'generated_{self.args.run_id}.gif')})
 
         if self.args.writer:
             self.writer.close()
@@ -329,7 +329,7 @@ class VAE_Model(nn.Module):
         if self.args.store_visualization:
             self.plot_PSNR_per_frame(psnr)
             generated_list = stack(generated_list, dim=0).permute(1, 0, 2, 3, 4)
-            self.make_gif(generated_list[0], 'generated.gif')
+            self.make_gif(generated_list[0], f'generated_{self.args.run_id}.gif')
     
         return total_loss / len(batch_images), total_mse_loss / len(batch_images), total_kl_loss / len(batch_images), np.mean(psnr)
             
@@ -416,7 +416,7 @@ class VAE_Model(nn.Module):
         plt.xlabel('Frame index')
         plt.ylabel('PSNR')
         plt.title('Per frame Quality(PSNR)')
-        plt.savefig('PSNR_per_frame.png')
+        plt.savefig(f'PSNR_per_frame_{self.args.run_id}.png')
         plt.close()
 
     def init_logger(self):
@@ -450,7 +450,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument('--batch_size',    type=int,    default=2)
     parser.add_argument('--lr',            type=float,  default=0.001,     help="initial learning rate")
-    parser.add_argument('--device',        type=str, choices=["cuda", "cpu", "cuda:1"], default="cuda")
+    parser.add_argument('--device',        type=str, choices=["cuda", "cpu", "cuda:1", "cuda:2", "cuda:3"], default="cuda")
     parser.add_argument('--optim',         type=str, choices=["Adam", "AdamW"], default="Adam")
     parser.add_argument('--gpu',           type=int, default=1)
     parser.add_argument('--test',          action='store_true')

@@ -219,6 +219,6 @@ events.*
 *.gif
 lab4/submission/*
 wandb
-PSNR_per_frame.png
+PSNR_per_frame*.png
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
