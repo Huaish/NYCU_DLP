@@ -216,5 +216,7 @@ lab3/src/tmp
 lab4/dataset/*
 *.ckpt
 events.*
+*.gif
+lab4/submission/*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
