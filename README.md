@@ -25,11 +25,6 @@ source ~/.bashrc
 source ~/.zshrc
 ```
 
-Add conda-forge channel
-
-```bash
-con config --add channels conda-forge
-```
 
 ### Create conda environment
 
@@ -38,6 +33,11 @@ conda create -n dlp python=3.8
 conda activate dlp
 ```
 
+Add conda-forge channel
+
+```bash
+conda config --add channels conda-forge
+```
 
 ```bash
 conda config --set auto_activate_base false
