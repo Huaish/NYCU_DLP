@@ -114,51 +114,96 @@ class VAE_Model(nn.Module):
         self.val_vi_len   = args.val_vi_len
         self.batch_size = args.batch_size
         
-        # Initialize the tensorboard
-        self.writer = SummaryWriter(args.tensorboard_path)
+        # Define the tensorboard writer
+        if args.tensorboard:
+            self.writer = None
 
     def forward(self, img, label):
         pass
     
     def training_stage(self):
+        if self.args.wandb:
+            import wandb
+            wandb.watch(self)
+
+        best_psnr = -1
         for i in range(self.current_epoch, self.args.num_epoch):
             train_loader = self.train_dataloader()
             adapt_TeacherForcing = True if random.random() < self.tfr else False
             
+            total_loss, total_mse_loss, total_kl_loss = 0., 0., 0.
             for (img, label) in (pbar := tqdm(train_loader, ncols=120)):
                 img = img.to(self.args.device)
                 label = label.to(self.args.device)
-                loss = self.training_one_step(img, label, adapt_TeacherForcing)
+                loss, mse_loss, kl_loss = self.training_one_step(img, label, adapt_TeacherForcing)
                 
                 beta = self.kl_annealing.get_beta()
                 if adapt_TeacherForcing:
                     self.tqdm_bar('train [TeacherForcing: ON, {:.1f}], beta: {}'.format(self.tfr, beta), pbar, loss.detach().cpu(), lr=self.scheduler.get_last_lr()[0])
                 else:
                     self.tqdm_bar('train [TeacherForcing: OFF, {:.1f}], beta: {}'.format(self.tfr, beta), pbar, loss.detach().cpu(), lr=self.scheduler.get_last_lr()[0])
-            
+
+                total_loss += loss.detach().cpu()
+                total_mse_loss += mse_loss.detach().cpu()
+                total_kl_loss += kl_loss.detach().cpu()
+
             if self.current_epoch % self.args.per_save == 0:
                 self.save(os.path.join(self.args.save_root, f"epoch={self.current_epoch}.ckpt"))
                 
-            self.eval()
+            val_loss, val_mse_loss, val_kl_loss, val_psnr = self.eval()
             self.current_epoch += 1
             self.scheduler.step()
             self.teacher_forcing_ratio_update()
             self.kl_annealing.update()
             
-            # Logging the loss to tensorboard
-            self.writer.add_scalar('Loss/train', loss, self.current_epoch)
-            self.writer.add_scalar('TFR', self.tfr, self.current_epoch)
-            self.writer.add_scalar('Beta', beta, self.current_epoch)
+            if val_psnr > best_psnr:
+                best_psnr = val_psnr
+                self.save(os.path.join(self.args.save_root, f"best_model.ckpt"))
+            
+            # Logging
+            train_loss = total_loss / len(train_loader)
+            train_mse_loss = total_mse_loss / len(train_loader)
+            train_kl_loss = total_kl_loss / len(train_loader)
+            if self.args.tensorboard:
+                self.writer.add_scalar('Loss/train', train_loss, self.current_epoch)
+                self.writer.add_scalar('Loss/val', val_loss, self.current_epoch)
+                self.writer.add_scalar('TFR', self.tfr, self.current_epoch)
+                self.writer.add_scalar('Beta', beta, self.current_epoch)
+                self.writer.flush()
+            
+            if self.args.wandb:
+                wandb.log({'Train Loss': train_loss, 'Train MSE Loss': train_mse_loss, 'Train KL Loss': train_kl_loss})
+                wandb.log({'Val Loss': val_loss, 'Val MSE Loss': val_mse_loss, 'Val KL Loss': val_kl_loss, 'Val PSNR': val_psnr})
+                wandb.log({'TFR': self.tfr, 'Beta': beta})
+                if self.args.store_visualization and self.current_epoch % 5 == 0:
+                    if os.path.exists('PSNR_per_frame.png'):
+                        wandb.log({'PSNR_per_frame': wandb.Image('PSNR_per_frame.png')})
+                    if os.path.exists('generated.gif'):
+                        wandb.log({'Generated_GIF': wandb.Video('generated.gif')})
+
+        if self.args.writer:
+            self.writer.close()
+        if self.args.wandb:
+            wandb.save(os.path.join(self.args.save_root, f"best_model.ckpt"))
+            wandb.finish()
+        
             
     @torch.no_grad()
     def eval(self):
         val_loader = self.val_dataloader()
+        total_loss, total_mse_loss, total_kl_loss, total_psnr = 0., 0., 0., 0.
         for (img, label) in (pbar := tqdm(val_loader, ncols=120)):
             img = img.to(self.args.device)
             label = label.to(self.args.device)
-            loss = self.val_one_step(img, label)
+            loss, mse_loss, kl_loss, psnr = self.val_one_step(img, label)
             self.tqdm_bar('val', pbar, loss.detach().cpu(), lr=self.scheduler.get_last_lr()[0])
-            self.writer.add_scalar('Loss/val', loss, self.current_epoch)
+            
+            total_loss += loss.detach().cpu()
+            total_mse_loss += mse_loss.detach().cpu()
+            total_kl_loss += kl_loss.detach().cpu()
+            total_psnr += psnr
+            
+        return total_loss / len(val_loader), total_mse_loss / len(val_loader), total_kl_loss / len(val_loader), total_psnr / len(val_loader)
     
     def training_one_step(self, batch_images, batch_labels, adapt_TeacherForcing):
         """Training one step of the model
@@ -219,11 +264,8 @@ class VAE_Model(nn.Module):
             self.optim.zero_grad()
             loss.backward()
             self.optimizer_step()
-            
-        # Logging mse and kl loss to tensorboard
-        self.writer.add_scalars('Loss', {'mse': total_mse_loss, 'kl': total_kl_loss}, self.current_epoch)
 
-        return total_loss / len(batch_images)
+        return total_loss / len(batch_images), total_mse_loss / len(batch_images), total_kl_loss / len(batch_images)
     
     def val_one_step(self, batch_images, batch_labels):
         """Validation one step of the model
@@ -236,8 +278,9 @@ class VAE_Model(nn.Module):
             torch.Tensor: Avg. loss value
         """
 
-        total_loss = 0.
+        total_loss, total_mse_loss, total_kl_loss = 0., 0., 0.
         psnr = []
+        generated_list = []
 
         beta = self.kl_annealing.get_beta()
         for images, labels in zip(batch_images, batch_labels):
@@ -267,6 +310,7 @@ class VAE_Model(nn.Module):
                 mse_loss += self.mse_criterion(generated_frame, current_frame)
                 kl_loss += kl_criterion(mu, logvar, self.batch_size)
                 psnr.append(Generate_PSNR(generated_frame, current_frame).cpu())
+                generated_list.append(generated_frame.cpu())
                 
                 # Update the last frame
                 last_frame = generated_frame
@@ -278,12 +322,17 @@ class VAE_Model(nn.Module):
             # Compute one loss of the mini-batch
             loss = mse_loss + beta * kl_loss
             total_loss += loss
+            total_mse_loss += mse_loss
+            total_kl_loss += kl_loss
 
         # Plot the PSNR per frame
-        self.plot_PSNR_per_frame(psnr)
-        return total_loss / len(batch_images)
-        
-                
+        if self.args.store_visualization:
+            self.plot_PSNR_per_frame(psnr)
+            generated_list = stack(generated_list, dim=0).permute(1, 0, 2, 3, 4)
+            self.make_gif(generated_list[0], 'generated.gif')
+    
+        return total_loss / len(batch_images), total_mse_loss / len(batch_images), total_kl_loss / len(batch_images), np.mean(psnr)
+            
     def make_gif(self, images_list, img_name):
         new_list = []
         for img in images_list:
@@ -338,7 +387,8 @@ class VAE_Model(nn.Module):
             "optimizer": self.state_dict(),  
             "lr"        : self.scheduler.get_last_lr()[0],
             "tfr"       :   self.tfr,
-            "last_epoch": self.current_epoch
+            "last_epoch": self.current_epoch,
+            "args"      : self.args
         }, path)
         print(f"save ckpt to {path}")
 
@@ -348,6 +398,7 @@ class VAE_Model(nn.Module):
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
             self.args.lr = checkpoint['lr']
             self.tfr = checkpoint['tfr']
+            self.args = checkpoint['args']
             
             self.optim      = optim.Adam(self.parameters(), lr=self.args.lr)
             self.scheduler  = optim.lr_scheduler.MultiStepLR(self.optim, milestones=[2, 4], gamma=0.1)
@@ -368,11 +419,25 @@ class VAE_Model(nn.Module):
         plt.savefig('PSNR_per_frame.png')
         plt.close()
 
+    def init_logger(self):
+        if self.args.wandb:
+            import wandb
+            if self.args.ckpt_path != None:
+                wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='True')
+            else:
+                run_id = wandb.util.generate_id()
+                self.args.run_id = run_id
+                wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='allow')
+        if self.args.tensorboard:
+            self.writer = SummaryWriter(self.args.tensorboard_path)
+            
+    
 def main(args):
     
     os.makedirs(args.save_root, exist_ok=True)
     model = VAE_Model(args).to(args.device)
     model.load_checkpoint()
+    model.init_logger()
     if args.test:
         model.eval()
     else:
@@ -389,11 +454,11 @@ if __name__ == '__main__':
     parser.add_argument('--optim',         type=str, choices=["Adam", "AdamW"], default="Adam")
     parser.add_argument('--gpu',           type=int, default=1)
     parser.add_argument('--test',          action='store_true')
-    parser.add_argument('--store_visualization',      action='store_true', help="If you want to see the result while training")
+    parser.add_argument('--store_visualization',  action='store_false', help="If you want to see the result while training")
     parser.add_argument('--DR',            type=str, required=True,  help="Your Dataset Path")
     parser.add_argument('--save_root',     type=str, required=True,  help="The path to save your data")
     parser.add_argument('--num_workers',   type=int, default=4)
-    parser.add_argument('--num_epoch',     type=int, default=400,     help="number of total epoch")
+    parser.add_argument('--num_epoch',     type=int, default=200,     help="number of total epoch")
     parser.add_argument('--per_save',      type=int, default=3,      help="Save checkpoint every seted epoch")
     parser.add_argument('--partial',       type=float, default=1.0,  help="Part of the training dataset to be trained")
     parser.add_argument('--train_vi_len',  type=int, default=16,     help="Training video length")
@@ -425,14 +490,18 @@ if __name__ == '__main__':
     parser.add_argument('--kl_anneal_ratio',    type=float, default=1,              help="")
     
     # Tensorboard arguments
-    parser.add_argument('--tensorboard',        default=True, action='store_true', help="Use tensorboard to visualize the training process")
+    parser.add_argument('--tensorboard',        action='store_false', help="Use tensorboard to visualize the training process")
     parser.add_argument('--tensorboard_path',   type=str, default=None,        help="The path to save the tensorboard logs")
+    
+    # Wandb arguments
+    parser.add_argument('--wandb',              action='store_true', help="Use wandb to visualize the training process")
 
     args = parser.parse_args()
     
     if args.tensorboard:
         if args.tensorboard_path == None:
             args.tensorboard_path = f"../runs/{args.kl_anneal_type}_{args.kl_anneal_ratio}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            args.run_id = ""
     
     main(args)
 
