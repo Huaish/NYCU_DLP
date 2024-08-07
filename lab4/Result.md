@@ -29,7 +29,7 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Without --lr 0.000
 (gpu7-tmux2) wandb: Syncing run eager-sound-11 ( Cyclical_0.5-tfr_1.0_10_0.1-20240807-033052 )
 Val PSNR: 22.84535026550293
 
-![PSNR_eager-sound-11_g0uglg3t.png](img/PSNR_eager-sound-11_g0uglg3t.png)
+![PSNR_eager-sound-11_g0uglg3t.png](img/eager-sound-11/PSNR_eager-sound-11_g0uglg3t.png)
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr1 --lr 0.0001 --num_epoch 100 --tfr 1 --kl_anneal_type Cyclical --kl_anneal_ratio 0.5 --wandb --device cuda:7
 ```
@@ -53,7 +53,10 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr1 --lr 
 **Cyclical KL Annealing**
 
 (vonernue) wandb: Syncing run decent-wind-9
-Test: 26.75431
+Val PSNR: 28.146825790405273
+Test PSNR: 26.75431
+
+![PSNR_per_frame_uf6y1zlj.png](img/decent-wind-9/PSNR_decent-wind-9_uf6y1zlj.png)
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr05 --lr 0.0001 --num_epoch 100 --tfr 0.5 --tfr_d_step 0.05 --kl_anneal_type Cyclical --kl_anneal_ratio 0.5 --wandb --device cuda:3
 ```
@@ -65,9 +68,9 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr05 --
 ```
 
 **Without KL Annealing**
-
+(gpu7-tmux2) wandb: Syncing run earnest-shape-19
 ```bash
-python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr05 --lr 0.0001 --num_epoch 100 --tfr 0.5 --tfr_d_step 0.05 --kl_anneal_type None --kl_anneal_ratio 0.5 --wandb --device cuda:3
+python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr05 --lr 0.0001 --num_epoch 100 --tfr 0.5 --tfr_d_step 0.05 --kl_anneal_type None --kl_anneal_ratio 0.5 --wandb --device cuda:7
 ```
 
 ---
