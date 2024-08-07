@@ -331,8 +331,9 @@ class VAE_Model(nn.Module):
                 last_frame = generated_frame
                 
                 # Logging the generated frame and PSNR to tensorboard
-                self.writer.add_image(f'Generated Frame/epoch-{self.current_epoch}', generated_frame.squeeze(0), i, dataformats='CHW')
-                self.writer.add_scalar(f'PSNR/epoch-{self.current_epoch}', Generate_PSNR(generated_frame, current_frame), i)
+                if self.args.tensorboard:
+                    self.writer.add_image(f'Generated Frame/epoch-{self.current_epoch}', generated_frame.squeeze(0), i, dataformats='CHW')
+                    self.writer.add_scalar(f'PSNR/epoch-{self.current_epoch}', Generate_PSNR(generated_frame, current_frame), i)
                 
             # Compute one loss of the mini-batch
             loss = mse_loss + beta * kl_loss
@@ -430,8 +431,7 @@ class VAE_Model(nn.Module):
             self.scheduler  = optim.lr_scheduler.MultiStepLR(self.optim, milestones=[2, 4], gamma=0.1)
             self.kl_annealing = kl_annealing(self.args, current_epoch=checkpoint['last_epoch'])
             self.current_epoch = checkpoint['last_epoch']
-            
-        args.device = f"cuda:{args.gpu}" if args.device == "cuda" else args.device
+
         set_seed(self.args.seed)
 
     def optimizer_step(self):
@@ -459,17 +459,21 @@ class VAE_Model(nn.Module):
                 self.args.run_id = run_id
                 wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='allow')
                 self.args.save_root += f"_{wandb.run.name}"
+                os.makedirs(args.save_root, exist_ok=True)
         if self.args.tensorboard:
             self.writer = SummaryWriter(self.args.tensorboard_path)
     
 def main(args):
-    
+
     os.makedirs(args.save_root, exist_ok=True)
-    model = VAE_Model(args)
+    model = VAE_Model(args).to(args.device)
     model.load_checkpoint()
-    model.to(args.device)
+
     if args.test:
+        model.args.tensorboard = False
+        model.args.wandb = False
         loss, mse_loss, kl_loss, psnr = model.eval()
+        print(f"Save the result to PSNR_per_frame_{model.args.run_id}.png and generated_{model.args.run_id}.gif")
         print(f"Val Loss: {loss}\nVal MSE Loss: {mse_loss}\nVal KL Loss: {kl_loss}\nVal PSNR: {psnr}")
     else:
         model.init_logger()
@@ -482,7 +486,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument('--batch_size',    type=int,    default=2)
     parser.add_argument('--lr',            type=float,  default=0.001,     help="initial learning rate")
-    parser.add_argument('--device',        type=str, choices=["cuda", "cpu"], default="cuda")
+    parser.add_argument('--device',        type=str, choices=["cuda", "cpu", "cuda:7"], default="cuda")
     parser.add_argument('--optim',         type=str, choices=["Adam", "AdamW"], default="Adam")
     parser.add_argument('--gpu',           type=int, default=1)
     parser.add_argument('--test',          action='store_true')
