@@ -458,15 +458,16 @@ class VAE_Model(nn.Module):
                 run_id = wandb.util.generate_id()
                 self.args.run_id = run_id
                 wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='allow')
-                self.save_root += f"_{wandb.run.name}"
+                self.args.save_root += f"_{wandb.run.name}"
         if self.args.tensorboard:
             self.writer = SummaryWriter(self.args.tensorboard_path)
     
 def main(args):
     
     os.makedirs(args.save_root, exist_ok=True)
-    model = VAE_Model(args).to(args.device)
+    model = VAE_Model(args)
     model.load_checkpoint()
+    model.to(args.device)
     if args.test:
         loss, mse_loss, kl_loss, psnr = model.eval()
         print(f"Val Loss: {loss}\nVal MSE Loss: {mse_loss}\nVal KL Loss: {kl_loss}\nVal PSNR: {psnr}")
