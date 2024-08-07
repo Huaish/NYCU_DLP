@@ -34,10 +34,18 @@ def kl_criterion(mu, logvar, batch_size):
   KLD /= batch_size  
   return KLD
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 
 class kl_annealing():
     def __init__(self, args, current_epoch=0):
-        self.iter = current_epoch
+        self.iter = current_epoch - 1
         self.n_iter = args.num_epoch
         self.beta = 1 if args.kl_anneal_type == 'None' else 0
         self.beta_start = 0.
@@ -45,6 +53,8 @@ class kl_annealing():
         self.kl_anneal_type = args.kl_anneal_type
         self.kl_anneal_cycle = args.kl_anneal_cycle
         self.kl_anneal_ratio = args.kl_anneal_ratio
+        
+        self.update()
         
     def update(self):
         self.iter += 1
@@ -151,15 +161,11 @@ class VAE_Model(nn.Module):
                 self.save(os.path.join(self.args.save_root, f"epoch={self.current_epoch}.ckpt"))
                 
             val_loss, val_mse_loss, val_kl_loss, val_psnr = self.eval()
-            self.current_epoch += 1
-            self.scheduler.step()
-            self.teacher_forcing_ratio_update()
-            self.kl_annealing.update()
             
-            if val_psnr > best_psnr:
+            if val_psnr > best_psnr and self.current_epoch > 10:
                 best_psnr = val_psnr
                 self.save(os.path.join(self.args.save_root, f"best_model.ckpt"))
-            
+
             # Logging
             train_loss = total_loss / len(train_loader)
             train_mse_loss = total_mse_loss / len(train_loader)
@@ -172,22 +178,31 @@ class VAE_Model(nn.Module):
                 self.writer.flush()
             
             if self.args.wandb:
-                wandb.log({'Train Loss': train_loss, 'Train MSE Loss': train_mse_loss, 'Train KL Loss': train_kl_loss})
-                wandb.log({'Val Loss': val_loss, 'Val MSE Loss': val_mse_loss, 'Val KL Loss': val_kl_loss, 'Val PSNR': val_psnr})
-                wandb.log({'TFR': self.tfr, 'Beta': beta})
-                if self.args.store_visualization and self.current_epoch % 5 == 1:
+                wandb.log({'Train Loss': train_loss, 'Train MSE Loss': train_mse_loss, 'Train KL Loss': train_kl_loss}, step=self.current_epoch)
+                wandb.log({'Val Loss': val_loss, 'Val MSE Loss': val_mse_loss, 'Val KL Loss': val_kl_loss, 'Val PSNR': val_psnr}, step=self.current_epoch)
+                wandb.log({'TFR': self.tfr, 'Beta': beta}, step=self.current_epoch)
+                if self.args.store_visualization and self.current_epoch % 5 == 0:
                     if os.path.exists(f'PSNR_per_frame_{self.args.run_id}.png'):
-                        wandb.log({'PSNR_per_frame': wandb.Image(f'PSNR_per_frame_{self.args.run_id}.png')})
+                        wandb.log({'PSNR_per_frame': wandb.Image(f'PSNR_per_frame_{self.args.run_id}.png')}, step=self.current_epoch)
                     if os.path.exists(f'generated_{self.args.run_id}.gif'):
-                        wandb.log({'Generated_GIF': wandb.Video(f'generated_{self.args.run_id}.gif')})
+                        wandb.log({'Generated_GIF': wandb.Video(f'generated_{self.args.run_id}.gif')} , step=self.current_epoch)
 
-        if self.args.writer:
+            # Update the training strategy
+            self.current_epoch += 1
+            self.scheduler.step()
+            self.teacher_forcing_ratio_update()
+            self.kl_annealing.update()
+        
+        self.save(os.path.join(self.args.save_root, f"final_model.ckpt"))
+        if self.args.tensorboard:
             self.writer.close()
         if self.args.wandb:
-            wandb.save(os.path.join(self.args.save_root, f"best_model.ckpt"))
+            try:
+                wandb.save(os.path.join(self.args.save_root, f"final_model.ckpt"))
+            except:
+                print("Wandb save failed")
             wandb.finish()
-        
-            
+
     @torch.no_grad()
     def eval(self):
         val_loader = self.val_dataloader()
@@ -393,17 +408,31 @@ class VAE_Model(nn.Module):
         print(f"save ckpt to {path}")
 
     def load_checkpoint(self):
+        args = self.args
         if self.args.ckpt_path != None:
             checkpoint = torch.load(self.args.ckpt_path)
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
+            self.args = checkpoint['args']
             self.args.lr = checkpoint['lr']
             self.tfr = checkpoint['tfr']
-            self.args = checkpoint['args']
+            self.args.device = args.device
+            self.args.gpu = args.gpu
+            self.args.test = args.test
+            self.args.store_visualization = args.store_visualization
+            self.args.DR = args.DR
+            self.args.save_root = args.save_root
+            self.args.ckpt_path = args.ckpt_path
+            self.args.tensorboard = args.tensorboard
+            self.args.wandb = args.wandb
+            self.args.seed = args.seed
             
             self.optim      = optim.Adam(self.parameters(), lr=self.args.lr)
             self.scheduler  = optim.lr_scheduler.MultiStepLR(self.optim, milestones=[2, 4], gamma=0.1)
             self.kl_annealing = kl_annealing(self.args, current_epoch=checkpoint['last_epoch'])
             self.current_epoch = checkpoint['last_epoch']
+            
+        args.device = f"cuda:{args.gpu}" if args.device == "cuda" else args.device
+        set_seed(self.args.seed)
 
     def optimizer_step(self):
         nn.utils.clip_grad_norm_(self.parameters(), 1.)
@@ -423,24 +452,26 @@ class VAE_Model(nn.Module):
         if self.args.wandb:
             import wandb
             if self.args.ckpt_path != None:
-                wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='True')
+                print(f"Resume from {self.args.run_id}")
+                wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='must')
             else:
                 run_id = wandb.util.generate_id()
                 self.args.run_id = run_id
                 wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='allow')
+                self.save_root += f"_{wandb.run.name}"
         if self.args.tensorboard:
             self.writer = SummaryWriter(self.args.tensorboard_path)
-            
     
 def main(args):
     
     os.makedirs(args.save_root, exist_ok=True)
     model = VAE_Model(args).to(args.device)
     model.load_checkpoint()
-    model.init_logger()
     if args.test:
-        model.eval()
+        loss, mse_loss, kl_loss, psnr = model.eval()
+        print(f"Val Loss: {loss}\nVal MSE Loss: {mse_loss}\nVal KL Loss: {kl_loss}\nVal PSNR: {psnr}")
     else:
+        model.init_logger()
         model.training_stage()
 
 
@@ -450,7 +481,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument('--batch_size',    type=int,    default=2)
     parser.add_argument('--lr',            type=float,  default=0.001,     help="initial learning rate")
-    parser.add_argument('--device',        type=str, choices=["cuda", "cpu", "cuda:1", "cuda:2", "cuda:3"], default="cuda")
+    parser.add_argument('--device',        type=str, choices=["cuda", "cpu"], default="cuda")
     parser.add_argument('--optim',         type=str, choices=["Adam", "AdamW"], default="Adam")
     parser.add_argument('--gpu',           type=int, default=1)
     parser.add_argument('--test',          action='store_true')
@@ -465,6 +496,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_vi_len',    type=int, default=630,    help="valdation video length")
     parser.add_argument('--frame_H',       type=int, default=32,     help="Height input image to be resize")
     parser.add_argument('--frame_W',       type=int, default=64,     help="Width input image to be resize")
+    parser.add_argument('--seed',          type=int, default=42,     help="random seed")
     
     
     # Module parameters setting
