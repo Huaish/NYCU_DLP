@@ -213,6 +213,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_vi_len',    type=int, default=630,    help="valdation video length")
     parser.add_argument('--frame_H',       type=int, default=32,     help="Height input image to be resize")
     parser.add_argument('--frame_W',       type=int, default=64,     help="Width input image to be resize")
+    parser.add_argument('--seed',          type=int, default=42,     help="random seed")
     
     
     # Module parameters setting
@@ -241,5 +242,10 @@ if __name__ == '__main__':
     
 
     args = parser.parse_args()
+    
+    # Set random seed
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    np.random.seed(args.seed)
     
     main(args)
