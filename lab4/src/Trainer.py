@@ -407,24 +407,21 @@ class VAE_Model(nn.Module):
         print(f"save ckpt to {path}")
 
     def load_checkpoint(self):
-        args = self.args
+        resume_args = [
+            "batch_size", "lr", "optim", "num_epoch", "per_save", "partial", "train_vi_len", "val_vi_len", "frame_H", "frame_W", 
+            "F_dim", "L_dim", "N_dim", "D_out_dim", "tfr", "tfr_sde", "tfr_d_step",
+            "fast_train", "fast_partial", "fast_train_epoch",
+            "kl_anneal_type", "kl_anneal_cycle", "kl_anneal_ratio", "run_id"
+        ]
+
         if self.args.ckpt_path != None:
             checkpoint = torch.load(self.args.ckpt_path)
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
-            self.args = checkpoint['args'] if 'args' in checkpoint else args
-            self.args.lr = checkpoint['lr']
-            self.tfr = checkpoint['tfr']
-            self.args.device = args.device
-            self.args.gpu = args.gpu
-            self.args.test = args.test
-            self.args.store_visualization = args.store_visualization
-            self.args.DR = args.DR
-            self.args.save_root = args.save_root
-            self.args.ckpt_path = args.ckpt_path
-            self.args.tensorboard = args.tensorboard
-            self.args.wandb = args.wandb
-            self.args.seed = args.seed
-            
+            # self.args = checkpoint['args'] if 'args' in checkpoint else args
+            for key, value in vars(checkpoint['args']).items():
+                if key in resume_args or getattr(self.args, key) == None:
+                    setattr(self.args, key, value)
+
             self.optim      = optim.Adam(self.parameters(), lr=self.args.lr)
             self.scheduler  = optim.lr_scheduler.MultiStepLR(self.optim, milestones=[2, 4], gamma=0.1)
             self.kl_annealing = kl_annealing(self.args, current_epoch=checkpoint['last_epoch'])
@@ -458,7 +455,13 @@ class VAE_Model(nn.Module):
                 wandb.init(project='NYCU-DLP-Lab4', id=self.args.run_id, config=self.args, resume='allow')
                 self.args.save_root += f"_{wandb.run.name}"
                 os.makedirs(args.save_root, exist_ok=True)
-        if self.args.tensorboard:
+            if self.args.tensorboard:
+                if self.args.tensorboard_path == None:
+                    self.args.tensorboard_path = f"../runs/{args.kl_anneal_type}__tfr_{args.tfr}-{args.tfr_sde}-{args.tfr_d_step}__{wandb.run.name}"
+                self.writer = SummaryWriter(self.args.tensorboard_path)
+        elif self.args.tensorboard:
+            if self.args.tensorboard_path == None:
+                self.args.tensorboard_path = f"../runs/{args.kl_anneal_type}_{args.kl_anneal_ratio}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
             self.writer = SummaryWriter(self.args.tensorboard_path)
     
 def main(args):
@@ -476,8 +479,6 @@ def main(args):
     else:
         model.init_logger()
         model.training_stage()
-
-
 
 
 if __name__ == '__main__':
@@ -530,13 +531,9 @@ if __name__ == '__main__':
     
     # Wandb arguments
     parser.add_argument('--wandb',              action='store_true', help="Use wandb to visualize the training process")
+    parser.add_argument('--run_id',             type=str, default="",        help="The run id of the wandb")
 
     args = parser.parse_args()
-    
-    if args.tensorboard:
-        if args.tensorboard_path == None:
-            args.tensorboard_path = f"../runs/{args.kl_anneal_type}_{args.kl_anneal_ratio}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            args.run_id = ""
     
     main(args)
 
