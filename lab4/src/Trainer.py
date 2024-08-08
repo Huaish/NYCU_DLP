@@ -479,6 +479,7 @@ def main(args):
     model.init_logger()
 
     if args.test:
+        model.args.tensorboard = False
         model.args.wandb = False
         loss, mse_loss, kl_loss, psnr = model.eval()
         print(f"Save the result to PSNR_per_frame_{model.args.run_id}.png and generated_{model.args.run_id}.gif")
