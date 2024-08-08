@@ -313,6 +313,9 @@ class VAE_Model(nn.Module):
                 # Conduct Posterior prediction in Encoder
                 z, mu, logvar = self.Gaussian_Predictor(current_frame_features, current_label_features)
                 
+                # Sample the latent variable z from the Normal distribution
+                z = torch.randn_like(z)
+                
                 # Decoder Fusion
                 output = self.Decoder_Fusion(last_frame_features, current_label_features, z)
                 
@@ -331,8 +334,11 @@ class VAE_Model(nn.Module):
                 # Logging the generated frame and PSNR to tensorboard
                 if self.args.tensorboard:
                     self.writer.add_image(f'Generated Frame/epoch-{self.current_epoch}', generated_frame.squeeze(0), i, dataformats='CHW')
-                    self.writer.add_scalar(f'PSNR/epoch-{self.current_epoch}', Generate_PSNR(generated_frame, current_frame), i)
-                
+                    if self.args.test:
+                        self.writer.add_scalar(f'PSNR/val', Generate_PSNR(generated_frame, current_frame), i)
+                    else:
+                        self.writer.add_scalar(f'PSNR/epoch-{self.current_epoch}', Generate_PSNR(generated_frame, current_frame), i)
+
             # Compute one loss of the mini-batch
             loss = mse_loss + beta * kl_loss
             total_loss += loss
@@ -418,9 +424,10 @@ class VAE_Model(nn.Module):
             checkpoint = torch.load(self.args.ckpt_path)
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
             # self.args = checkpoint['args'] if 'args' in checkpoint else args
-            for key, value in vars(checkpoint['args']).items():
-                if key in resume_args or getattr(self.args, key) == None:
-                    setattr(self.args, key, value)
+            if 'args' in checkpoint:
+                for key, value in vars(checkpoint['args']).items():
+                    if key in resume_args or getattr(self.args, key) == None:
+                        setattr(self.args, key, value)
 
             self.optim      = optim.Adam(self.parameters(), lr=self.args.lr)
             self.scheduler  = optim.lr_scheduler.MultiStepLR(self.optim, milestones=[2, 4], gamma=0.1)
@@ -469,15 +476,14 @@ def main(args):
     os.makedirs(args.save_root, exist_ok=True)
     model = VAE_Model(args).to(args.device)
     model.load_checkpoint()
+    model.init_logger()
 
     if args.test:
-        model.args.tensorboard = False
         model.args.wandb = False
         loss, mse_loss, kl_loss, psnr = model.eval()
         print(f"Save the result to PSNR_per_frame_{model.args.run_id}.png and generated_{model.args.run_id}.gif")
         print(f"Val Loss: {loss}\nVal MSE Loss: {mse_loss}\nVal KL Loss: {kl_loss}\nVal PSNR: {psnr}")
     else:
-        model.init_logger()
         model.training_stage()
 
 
