@@ -421,7 +421,7 @@ class VAE_Model(nn.Module):
         ]
 
         if self.args.ckpt_path != None:
-            checkpoint = torch.load(self.args.ckpt_path)
+            checkpoint = torch.load(self.args.ckpt_path, map_location=self.args.device)
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
             # self.args = checkpoint['args'] if 'args' in checkpoint else args
             if 'args' in checkpoint:

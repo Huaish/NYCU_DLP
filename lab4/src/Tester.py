@@ -177,7 +177,7 @@ class Test_model(VAE_Model):
 
     def load_checkpoint(self):
         if self.args.ckpt_path != None:
-            checkpoint = torch.load(self.args.ckpt_path)
+            checkpoint = torch.load(self.args.ckpt_path, map_location=self.args.device)
             self.load_state_dict(checkpoint['state_dict'], strict=True) 
 
 
