@@ -18,6 +18,7 @@
 
 (gpu7-tmux0) tensorboard: Cyclical-tfr_0.0_10_0.1
 Val PSNR: 26.14582061767578
+Test Score: 23.83427
 
 > Note: `w/o wandb` `old version`
 
@@ -34,6 +35,7 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical --lr 0.00
 > Note: `old version`
 
 Val PSNR: 25.5565128326416
+Test Score: 23.37815
 
 ![PSNR_wandering-snowflake-7_s1lvrqi3.png](img/Monotonic__tfr-0.0-10-0.1__wandering-snowflake-7/PSNR_wandering-snowflake-7_s1lvrqi3.png)
 
@@ -48,7 +50,7 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic --lr 0.0
 > Note: `old version`
 
 Val PSNR: 34.07182693481445
-Test PSNR: 31.61894
+Test Score: 31.61894
 
 ![PSNR_still-night-10_2do9gnvx.png](img/None__tfr-0.0-10-0.1__still-night-10/PSNR_still-night-10_2do9gnvx.png)
 
@@ -87,6 +89,12 @@ Val PSNR: 22.758983612060547
 > Note: `old version`
 
 ![PSNR_eager-sound-11_g0uglg3t.png](img/Cyclical__tfr-1.0-10-0.1__eager-sound-11/PSNR_eager-sound-11_g0uglg3t.png)
+
+<!-- TODO -->
+
+(gpu7-tmux3) wandb: Syncing run hopeful-thunder-32
+
+> Note: `latest version`
 
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr1 --lr 0.0001 --num_epoch 100 --tfr 1 --kl_anneal_type Cyclical --kl_anneal_ratio 0.5 --wandb --device cuda:7
@@ -132,6 +140,12 @@ Test PSNR: 26.75431
 
 ![PSNR_per_frame_uf6y1zlj.png](img/Cyclical__tfr-0.5-10-0.05__decent-wind-9/PSNR_decent-wind-9_uf6y1zlj.png)
 
+<!-- TODO -->
+
+(gpu7-tmux2) wandb: Syncing run soft-voice-30
+
+> Note: `latest version`
+
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr05 --lr 0.0001 --num_epoch 100 --tfr 0.5 --tfr_d_step 0.05 --kl_anneal_type Cyclical --kl_anneal_ratio 0.5 --wandb --device cuda:3
 ```
@@ -175,11 +189,23 @@ Val PSNR: 22.769935607910156
 
 ![PSNR_glorious-sun-6_u2vg0sx9.png](img/Cyclical__tfr-0.0-10-0.1__glorious-sun-6/PSNR_glorious-sun-6_u2vg0sx9.png)
 
+<!-- TODO -->
+
+(gpu4-tmux1) wandb: Syncing run still-armadillo-31
+
+> Note: `latest version`
+
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type Cyclical --kl_anneal_ratio 0.5 --wandb --device cuda:3
 ```
 
 **Monotonic KL Annealing**
+
+<!-- TODO -->
+
+(gpu7-tmux0) wandb: Syncing run sunny-snow-28
+
+> Note: `latest version`
 
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type Monotonic --kl_anneal_ratio 0.5 --wandb --device cuda:3
@@ -187,6 +213,12 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr0 --l
 
 **Without KL Annealing**
 
+<!-- TODO -->
+
+(gpu4-tmux1) wandb: Syncing run dainty-bee-29
+
+> Note: `latest version`
+
 ```bash
-python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type None --kl_anneal_ratio 0.5 --wandb --device cuda:3
+python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type None --kl_anneal_ratio 0.5 --wandb --device cuda:4
 ```
