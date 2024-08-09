@@ -82,6 +82,11 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr1 --lr
     ![PSNR_eager-sound-11_g0uglg3t.png](img/Cyclical__tfr-1.0-10-0.1__eager-sound-11/PSNR_eager-sound-11_g0uglg3t.png)
 
 2. ~~(gpu7-tmux3) wandb: Syncing run hopeful-thunder-32~~ -- Done but server crash
+
+    > Note: `latest version`
+
+3. (gpu5-tmux2) wandb: Syncing run playful-yogurt-36
+
     > Note: `latest version`
 
 
@@ -101,6 +106,10 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical/tfr05 --l
 
 2. ~~(gpu7-tmux2) wandb: Syncing run soft-voice-30~~ -> finished training but server crash
 
+    > Note: `latest version`
+
+3. (gpu5-tmux0) wandb: Syncing run warm-resonance-35
+    
     > Note: `latest version`
 
 ### tfr = 0
@@ -172,6 +181,10 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr0 --l
 
 1. ~~(gpu7-tmux0) wandb: Syncing run sunny-snow-28~~ -- Crashed
 
+    > Note: `latest version`
+
+2. (gpu5-tmux1) wandb: Syncing run northern-sky-37
+    
     > Note: `latest version`
 
 ### None KL Annealing

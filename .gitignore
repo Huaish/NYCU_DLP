@@ -221,5 +221,6 @@ lab4/submission/*
 wandb
 PSNR_per_frame*.png
 .config
+saved_models
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python

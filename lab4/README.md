@@ -234,21 +234,17 @@ The table shows that using Teacher Forcing helps the model get a much lower trai
 
 **Teacher Forcing Ratio = 1(Blue line)**
 
-Command
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr1 --lr 0.0001 --num_epoch 100 --tfr 1 --kl_anneal_type None --kl_anneal_ratio 0.5
 ```
 
 **Teacher Forcing Ratio = 0.5(Orange line)**
 
-Command
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr05 --lr 0.0001 --num_epoch 100 --tfr 0.5 --tfr_d_step 0.05 --kl_anneal_type None --kl_anneal_ratio 0.5
 ```
 
 **Teacher Forcing Ratio = 0(Green line)**
-
-Command
 
 ```bash
 python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type None --kl_anneal_ratio 0.5
