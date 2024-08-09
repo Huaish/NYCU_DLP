@@ -16,8 +16,8 @@ python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved
 
 # ----------------- #
 
-python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr0_glorious-sun-6_ep100/final-glorious-sun-6.ckpt --device cuda:3
-python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr0_glorious-sun-6_ep100/final-glorious-sun-6.ckpt --device cuda:3
+python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr0_still-armadillo-31_ep100/best-still-armadillo-31.ckpt
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr0_still-armadillo-31_ep100/best-still-armadillo-31.ckpt
 
 python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr05_decent-wind-9_ep100/final-decent-wind-9.ckpt --device cuda:3
 python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr05_decent-wind-9_ep100/final-decent-wind-9.ckpt --device cuda:3
