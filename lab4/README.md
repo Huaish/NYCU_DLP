@@ -1,12 +1,17 @@
 # Lab 4 - Conditional VAE for Video Prediction
 
-> student id: 313551097<br>
+> student id: 313551097  
 > student name: 鄭淮薰
 
 ## I. Derivate conditional VAE formula
 
-![Derivate CVAE1](img/Page1.png)
-![Derivate CVAE2](img/Page2.png)
+<!-- ![Derivate CVAE1](img/Page1.png) -->
+<!-- ![Derivate CVAE2](img/Page2.png) -->
+<img src="img/Page1.png" alt="Derivate CVAE1" height="800"/>
+
+<div style="break-after:page"></div>
+
+<img src="img/Page2.png" alt="Derivate CVAE2" height="600"/>
 
 ## II. Introduction
 
@@ -29,70 +34,73 @@ In each training step, we feed a batch of images and labels into the model and o
 7. After finishing all frames in the video sequence, compute the total loss of the mini-batch and backpropagate the loss
 
 ```python
-    def training_one_step(self, batch_images, batch_labels, adapt_TeacherForcing):
-        beta = self.kl_annealing.get_beta()
-        total_loss = 0
-        total_mse_loss, total_kl_loss = 0., 0.
+def training_one_step(self, batch_images, batch_labels, adapt_TeacherForcing):
+    beta = self.kl_annealing.get_beta()
+    total_loss = 0
+    total_mse_loss, total_kl_loss = 0., 0.
 
-        for (images, labels) in (zip(batch_images, batch_labels)):
-            mse_loss, kl_loss = 0., 0.
+    for (images, labels) in (zip(batch_images, batch_labels)):
+        mse_loss, kl_loss = 0., 0.
 
-            # Take the first frame as the initial last frame
-            last_frame = images[0, :, :, :].unsqueeze(0)
-            for i in range(1, self.train_vi_len):
-                current_frame = images[i, :, :, :].unsqueeze(0)
-                current_label = labels[i, :, :, :].unsqueeze(0)
+        # Take the first frame as the initial last frame
+        last_frame = images[0, :, :, :].unsqueeze(0)
+        for i in range(1, self.train_vi_len):
+            current_frame = images[i, :, :, :].unsqueeze(0)
+            current_label = labels[i, :, :, :].unsqueeze(0)
 
-                # Transform the image from RGB-domain to feature-domain
-                last_frame_feature = self.frame_transformation(last_frame)
-                current_frame_feature = self.frame_transformation(current_frame)
-                current_label_feature = self.label_transformation(current_label)
+            # Transform the image from RGB-domain to feature-domain
+            last_frame_feature = self.frame_transformation(last_frame)
+            current_frame_feature = self.frame_transformation(current_frame)
+            current_label_feature = self.label_transformation(current_label)
 
-                # Conduct Posterior prediction in Encoder
-                z, mu, logvar = self.Gaussian_Predictor(
-                    current_frame_feature, current_label_feature
-                )
+            # Conduct Posterior prediction in Encoder
+            z, mu, logvar = self.Gaussian_Predictor(
+                current_frame_feature, current_label_feature
+            )
 
-                # Decoder Fusion
-                output = self.Decoder_Fusion(
-                    last_frame_feature, current_label_feature, z
-                )
+            # Decoder Fusion
+            output = self.Decoder_Fusion(
+                last_frame_feature, current_label_feature, z
+            )
 
-                # Generative model
-                generated_frame = self.Generator(output)
+            # Generative model
+            generated_frame = self.Generator(output)
 
-                # Compute loss
-                mse_loss += self.mse_criterion(generated_frame, current_frame)
-                kl_loss += kl_criterion(mu, logvar, self.batch_size)
+            # Compute loss
+            mse_loss += self.mse_criterion(generated_frame, current_frame)
+            kl_loss += kl_criterion(mu, logvar, self.batch_size)
 
-                # Update the last frame with teacher forcing strategy
-                if adapt_TeacherForcing:
-                    last_frame = current_frame
-                else:
-                    last_frame = generated_frame
+            # Update the last frame with teacher forcing strategy
+            if adapt_TeacherForcing:
+                last_frame = current_frame
+            else:
+                last_frame = generated_frame
 
-            # Compute one loss of the mini-batch
-            loss = mse_loss + beta * kl_loss
-            total_loss += loss
-            total_mse_loss += mse_loss
-            total_kl_loss += kl_loss
+        # Compute one loss of the mini-batch
+        loss = mse_loss + beta * kl_loss
+        total_loss += loss
+        total_mse_loss += mse_loss
+        total_kl_loss += kl_loss
 
-            # Backward
-            self.optim.zero_grad()
-            loss.backward()
-            self.optimizer_step()
+        # Backward
+        self.optim.zero_grad()
+        loss.backward()
+        self.optimizer_step()
 
-        return total_loss / len(batch_images),
-               total_mse_loss / len(batch_images),
-               total_kl_loss / len(batch_images)
+    return total_loss / len(batch_images),
+            total_mse_loss / len(batch_images),
+            total_kl_loss / len(batch_images)
 ```
 
 **Loss**
 
 There are two loss functions we used in the training process.
+
 One is the Mean Squared Error (MSE) loss. We use it as the reconstruction loss to measure the difference between the generated frame and the ground truth frame.
+
 The other is the KL Divergence loss, which is used to measure the difference between the predicted distribution and the prior distribution.
-And we compute the total loss by adding the MSE loss and the KL Divergence loss with the KL annealing ratio beta. The beta is a hyperparameter that controls the trade-off between the reconstruction loss and the KL Divergence loss. We set the total loss as follows:
+
+And we compute the total loss by adding the MSE loss and the KL Divergence loss with the KL annealing ratio beta. The beta controls the trade-off between the reconstruction loss and the KL Divergence loss. We set the total loss as follows:
 
 ```python
 total_loss = mse_loss + beta * kl_loss
@@ -104,8 +112,8 @@ The testing protocal is similar to the training protocal. We feed the last frame
 
 ```python
 def val_one_step(self, img, label, idx=0):
-    img = img.permute(1, 0, 2, 3, 4) # change tensor into (seq, B, C, H, W)
-    label = label.permute(1, 0, 2, 3, 4) # change tensor into (seq, B, C, H, W)
+    img = img.permute(1, 0, 2, 3, 4)
+    label = label.permute(1, 0, 2, 3, 4)
     assert label.shape[0] == 630, "Testing pose seqence should be 630"
     assert img.shape[0] == 1, "Testing video seqence should be 1"
 
@@ -121,11 +129,15 @@ def val_one_step(self, img, label, idx=0):
         current_label = self.label_transformation(current_label)
 
         # Randomly sample the noise from N(0, 1) => 1, 12, 32, 64
-        z_shape = (1, self.args.N_dim, self.args.frame_H, self.args.frame_W)
+        z_shape = (
+            1, self.args.N_dim, self.args.frame_H, self.args.frame_W
+        )
         z = torch.randn(z_shape).to(self.args.device)
 
         # Decoder the fusion feature to the output frame
-        decoded_frame = self.Decoder_Fusion(current_frame, current_label, z)
+        decoded_frame = self.Decoder_Fusion(
+            current_frame, current_label, 
+        )
 
         # Generate the frame from the fusion feature
         generated_frame = self.Generator(decoded_frame)
@@ -188,12 +200,14 @@ class kl_annealing():
         self.iter += 1
         if self.kl_anneal_type == 'Cyclical':
             self.beta = self.frange_cycle_linear(
-                self.iter, self.n_iter, start=self.beta_start, stop=self.beta_end, 
+                self.iter, self.n_iter, 
+                start=self.beta_start, stop=self.beta_end, 
                 n_cycle=self.kl_anneal_cycle, ratio=self.kl_anneal_ratio
             )
         elif self.kl_anneal_type == 'Monotonic':
             self.beta = self.frange_cycle_linear(
-                self.iter, self.n_iter, start=self.beta_start, stop=self.beta_end, 
+                self.iter, self.n_iter, 
+                start=self.beta_start, stop=self.beta_end, 
                 n_cycle=1, ratio=self.kl_anneal_ratio
             )
         else:
@@ -296,7 +310,7 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr05 --
 python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic/tfr0 --lr 0.0001 --num_epoch 100 --tfr 0 --kl_anneal_type Monotonic --kl_anneal_ratio 0.5
 ```
 
-
+<div style="break-after:page"></div>
 
 ### 2. Plot the loss curve while training with different settings
 
@@ -308,13 +322,11 @@ I trained the model with three different KL annealing strategies, including Mono
 - kl_anneal_ratio: 0.5
 - kl_anneal_cycle: 10
 
-  **Command**
-
-  ```bash
-  python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic \
-          --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type Monotonic \
-          --kl_anneal_ratio 0.5
-  ```
+```bash
+python Trainer.py --DR ../dataset --save_root ../saved_models/Monotonic \
+        --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type Monotonic \
+        --kl_anneal_ratio 0.5
+```
 
 #### b. With KL annealing (Cyclical)
 
@@ -322,25 +334,21 @@ I trained the model with three different KL annealing strategies, including Mono
 - kl_anneal_ratio: 0.5
 - kl_anneal_cycle: 10
 
-  **Command**
-
-  ```bash
-  python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical \
-          --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type Cyclical \
-          --kl_anneal_ratio 0.5
-  ```
+```bash
+python Trainer.py --DR ../dataset --save_root ../saved_models/Cyclical \
+        --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type Cyclical \
+        --kl_anneal_ratio 0.5
+```
 
 #### c. Without KL annealing
 
 - Run ID: `None__tfr-0.0-10-0.1__still-night-10`
 
-  **Command**
-
-  ```bash
-  python Trainer.py --DR ../dataset --save_root ../saved_models/Without \
-          --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type None \
-          --kl_anneal_ratio 0.5
-  ```
+```bash
+python Trainer.py --DR ../dataset --save_root ../saved_models/Without \
+        --lr 0.0001 --num_epoch 200 --tfr 0 --kl_anneal_type None \
+        --kl_anneal_ratio 0.5
+```
 
 From the Loss Curve below, it can be observed that the model using the Cyclical KL annealing strategy exhibits noticeable periodic oscillations in loss during training. In contrast, the Monotonic KL annealing strategy causes the model's loss to decrease significantly in the early stages and stabilize later on. The model without the KL annealing strategy shows a smooth and steady decrease in loss. Overall, while all three approaches lead to effective model convergence, the Cyclical KL annealing strategy performs less favorably on the training data compared to the other two.
 
