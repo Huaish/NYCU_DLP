@@ -543,12 +543,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     main(args)
-
-    # Test the kl_annealing class
-    # writer = SummaryWriter(f"../runs/kl_annealing_test")
-    # kl = kl_annealing(args)
-    # for i in range(args.num_epoch):
-    #     writer.add_scalar('beta', kl.get_beta(), i)
-    #     print(f"{i}: {kl.get_beta()}")
-    #     kl.update()
-    # writer.close()
