@@ -196,7 +196,12 @@ class VAE_Model(nn.Module):
             self.writer.close()
         if self.args.wandb:
             try:
-                wandb.save(os.path.join(self.args.save_root, f"final_model.ckpt"))
+                os.mkdir(os.path.join(self.args.save_root, 'model'), exist_ok=True)
+                self.save(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt"))
+                wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt"), base_path=os.path.abspath(self.args.save_root)))
+                if os.path.exists(os.join(self.args.save_root, 'best_model.ckpt')):
+                    os.system(f"cp {os.path.join(self.args.save_root, 'best_model.ckpt')} {os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')}")
+                    wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')), base_path=os.path.abspath(self.args.save_root))
             except:
                 print("Wandb save failed")
             wandb.finish()
