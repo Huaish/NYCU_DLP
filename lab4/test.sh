@@ -19,15 +19,16 @@ python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved
 python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr0_still-armadillo-31_ep100/best-still-armadillo-31.ckpt
 python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr0_still-armadillo-31_ep100/best-still-armadillo-31.ckpt
 
-python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr05_decent-wind-9_ep100/final-decent-wind-9.ckpt --device cuda:3
-python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr05_decent-wind-9_ep100/final-decent-wind-9.ckpt --device cuda:3
+python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr05_warm-resonance-35_ep100/best-warm-resonance-35.ckpt
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr05_warm-resonance-35_ep100/best-warm-resonance-35.ckpt 
 
-python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr1_eager-sound-11_ep100/final-eager-sound-11.ckpt --device cuda:3
-python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr1_eager-sound-11_ep100/final-eager-sound-11.ckpt --device cuda:3
+python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Cyclical/tfr1_playful-yogurt-36_ep100/best-playful-yogurt-36.ckpt
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Cyclical/tfr1_playful-yogurt-36_ep100/best-playful-yogurt-36.ckpt
 
 # ----------------- #
 
-# wait for training to finish
+python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Monotonic/tfr0_northern-sky-37_ep100/best-northern-sky-37.ckpt
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Monotonic/tfr0_northern-sky-37_ep100/best-northern-sky-37.ckpt
 
 python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Monotonic/tfr05_fearless-monkey-21_ep100/final-fearless-monkey-21.ckpt --device cuda:3
 python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Monotonic/tfr05_decent-wind-9_ep100/final-fearless-monkey-21.ckpt --device cuda:3

@@ -226,4 +226,11 @@ python Trainer.py --DR ../dataset --save_root ../saved_models/Without/tfr0 --lr 
 1. ~~(gpu4-tmux1) wandb: Syncing run dainty-bee-29~~ -- Done but server crash
 
     > Note: `latest version`
-2. (gpu4 tmux2) wandb: Syncing run dutiful-haze-33
+
+2. ~~(gpu4 tmux2) wandb: Syncing run dutiful-haze-33~~
+
+    > Note: `latest version`
+
+3. (gpu4-tmux2) wandb: Syncing run breezy-sun-38
+
+    > Note: `latest version`
