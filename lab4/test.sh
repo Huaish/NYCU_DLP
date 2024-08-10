@@ -38,7 +38,8 @@ python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved
 
 # ----------------- #
 
-# wait for training to finish
+python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Without/tfr0_dainty-bee-29/best_model.ckpt
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Without/tfr0_dainty-bee-29/best_model.ckpt
 
 python Trainer.py --DR ../dataset --save_root ../submission/ --test --ckpt_path ../saved_models/Without/tfr05_ancient-voice-22_ep100/final-ancient-voice-22.ckpt --device cuda:3
 python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Without/tfr05_ancient-voice-22_ep100/final-ancient-voice-22.ckpt --device cuda:3
