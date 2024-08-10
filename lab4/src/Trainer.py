@@ -195,15 +195,7 @@ class VAE_Model(nn.Module):
         if self.args.tensorboard:
             self.writer.close()
         if self.args.wandb:
-            try:
-                os.mkdir(os.path.join(self.args.save_root, 'model'), exist_ok=True)
-                self.save(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt"))
-                wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt"), base_path=os.path.abspath(self.args.save_root)))
-                if os.path.exists(os.join(self.args.save_root, 'best_model.ckpt')):
-                    os.system(f"cp {os.path.join(self.args.save_root, 'best_model.ckpt')} {os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')}")
-                    wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')), base_path=os.path.abspath(self.args.save_root))
-            except:
-                print("Wandb save failed")
+            self.save_model_to_wandb()
             wandb.finish()
 
     @torch.no_grad()
@@ -475,6 +467,20 @@ class VAE_Model(nn.Module):
             if self.args.tensorboard_path == None:
                 self.args.tensorboard_path = f"../runs/{args.kl_anneal_type}_{args.kl_anneal_ratio}-tfr_{args.tfr}_{args.tfr_sde}_{args.tfr_d_step}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
             self.writer = SummaryWriter(self.args.tensorboard_path)
+    
+    def save_model_to_wandb(self):
+        try:
+            import wandb
+            os.mkdir(os.path.join(self.args.save_root, 'model'), exist_ok=True)
+            self.save(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt"))
+            wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f"final-{self.args.run_id}.ckpt")), base_path=os.path.abspath(self.args.save_root))
+            if os.path.exists(os.path.join(self.args.save_root, 'best_model.ckpt')):
+                os.system(f"cp {os.path.join(self.args.save_root, 'best_model.ckpt')} {os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')}")
+                wandb.save(os.path.abspath(os.path.join(self.args.save_root, 'model', f'best-{self.args.run_id}.ckpt')), base_path=os.path.abspath(self.args.save_root))
+            os.system(f"rm -r {os.path.join(self.args.save_root, 'model')}")   
+        except:
+            print("Wandb save failed") 
+        
     
 def main(args):
 
