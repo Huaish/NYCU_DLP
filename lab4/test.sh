@@ -1,5 +1,5 @@
 # Best Test Command
-python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Without/tfr0_still-night-10_ep200/final-still-night-10.ckpt --device cuda:7
+python Tester.py --DR ../dataset --save_root ../submission/ --ckpt_path ../saved_models/Without/tfr0_wild-river-27_ep400/final_model.ckpt
 
 
 
