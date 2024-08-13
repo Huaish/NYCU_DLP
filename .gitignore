@@ -223,5 +223,6 @@ PSNR_per_frame*.png
 .config
 saved_models
 *.pt
+lab5/src/cat_face/*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
