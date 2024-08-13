@@ -2,10 +2,21 @@ import torch.nn as nn
 import torch
 import math
 
-#TODO1
+# [x] TODO1
 class MultiHeadAttention(nn.Module):
     def __init__(self, dim=768, num_heads=16, attn_drop=0.1):
         super(MultiHeadAttention, self).__init__()
+        
+        self.num_heads = num_heads
+        self.dim = dim
+        self.head_dim = dim // num_heads # 768 // 16 = 48
+        self.qkv = nn.Linear(dim, dim * 3, bias=False) # 768 * 3 = 2304
+        self.scale = self.head_dim ** -0.5
+        '''
+        由於 q, k 的內積會隨著 head_dim 的增加而增加，為了避免內積過大造成 softmax 後的梯度過小，因此需要對 q, k 進行 scale 的調整
+        '''
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.out = nn.Linear(dim, dim)
 
     def forward(self, x):
         ''' Hint: input x tensor shape is (batch_size, num_image_tokens, dim), 
@@ -15,7 +26,27 @@ class MultiHeadAttention(nn.Module):
             Total d_k , d_v set to 768
             d_k , d_v for one head will be 768//16.
         '''
-        raise Exception('TODO1!')
+        
+        # Perform linear transformation for Q, K, V
+        qkv = self.qkv(x) # (batch_size, num_image_tokens, dim * 3) = (batch_size, num_image_tokens, 2304)
+        qkv = qkv.reshape(x.shape[0], x.shape[1], 3, self.num_heads, self.head_dim) # (batch_size, num_image_tokens, 3, num_heads, head_dim)
+        qkv = qkv.permute(2, 0, 3, 1, 4) # (3, batch_size, num_heads, num_image_tokens, head_dim)
+        q, k, v = qkv[0], qkv[1], qkv[2]
+        
+        # Calculate attention scores and apply softmax
+        '''
+        q: (batch_size, num_heads, num_image_tokens, head_dim)
+        k: (batch_size, num_heads, num_image_tokens, head_dim)
+        k.transpose(-2, -1): (batch_size, num_heads, head_dim, num_image_tokens)
+        '''
+        attn = (q @ k.transpose(-2, -1)) * self.scale # (batch_size, num_heads, num_image_tokens, num_image_tokens)
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+        
+        # Apply attention to V
+        x = attn @ v # (batch_size, num_image_tokens, num_heads, head_dim)
+        x = x.transpose(1, 2).reshape(x.shape[0], x.shape[2], self.dim) # (batch_size, num_image_tokens, dim)
+        return x
 
 class MLP(nn.Sequential):
     def __init__(self, dim=768, hidden_dim=3072, drop_rate=0.1):
