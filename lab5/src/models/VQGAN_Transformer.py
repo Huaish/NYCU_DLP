@@ -8,7 +8,7 @@ from .VQGAN import VQGAN
 from .Transformer import BidirectionalTransformer
 
 
-#TODO2 step1: design the MaskGIT model
+#[x] TODO2 step1: design the MaskGIT model
 class MaskGit(nn.Module):
     def __init__(self, configs):
         super().__init__()
@@ -31,13 +31,15 @@ class MaskGit(nn.Module):
         model = model.eval()
         return model
     
-##TODO2 step1-1: input x fed to vqgan encoder to get the latent and zq
+##[x] TODO2 step1-1: input x fed to vqgan encoder to get the latent and zq
     @torch.no_grad()
     def encode_to_z(self, x):
-        raise Exception('TODO2 step1-1!')
-        return None
+        z, z_q, _ = self.vqgan.encode(x) #z: (b, c, h, w), z_q: b*c
+        z_q = z_q.reshape(z.shape[0], -1)
+        
+        return z, z_q
     
-##TODO2 step1-2:    
+## [x] TODO2 step1-2:    
     def gamma_func(self, mode="cosine"):
         """Generates a mask rate by scheduling mask functions R.
 
@@ -51,26 +53,43 @@ class MaskGit(nn.Module):
 
         """
         if mode == "linear":
-            raise Exception('TODO2 step1-2!')
-            return None
+            return lambda ratio: 1 - ratio
         elif mode == "cosine":
-            raise Exception('TODO2 step1-2!')
-            return None
+            return lambda ratio: math.cos(math.pi * ratio / 2)
         elif mode == "square":
-            raise Exception('TODO2 step1-2!')
-            return None
+            return lambda ratio: 1 - ratio ** 2
+        elif mode == "cubic":
+            return lambda ratio: 1 - ratio ** 3
+        elif mode == "square_root":
+            return lambda ratio: 1 - math.sqrt(ratio)
+        elif mode == "constant":
+            return lambda ratio: 1
         else:
             raise NotImplementedError
 
-##TODO2 step1-3:            
+##[x] TODO2 step1-3:            
     def forward(self, x):
+        # encode the input image to latent and quantized latent
+        _, z_q = self.encode_to_z(x)
         
-        z_indices=None #ground truth
-        logits = None  #transformer predict the probability of tokens
-        raise Exception('TODO2 step1-3!')
+        # In training, the mask ratio is randomly sampled
+        ratio = np.random.uniform(0, 1)
+        mask_ratio = self.gamma(ratio)
+        mask = torch.rand_like(z_q.float()) < mask_ratio
+        
+        # Mask the tokens
+        mask_z_q = z_q.clone()
+        mask_z_q[mask] = self.mask_token_id
+        
+        # Pass the masked tokens to the transformer
+        logits = self.transformer(mask_z_q)
+
+        z_indices = z_q #ground truth
+        logits = logits #transformer predict the probability of tokens
+        
         return logits, z_indices
     
-##TODO3 step1-1: define one iteration decoding   
+##[ ] TODO3 step1-1: define one iteration decoding   
     @torch.no_grad()
     def inpainting(self):
         raise Exception('TODO3 step1-1!')
