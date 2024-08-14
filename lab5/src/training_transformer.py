@@ -20,18 +20,23 @@ class TrainTransformer:
         self.model = VQGANTransformer(MaskGit_CONFIGS["model_param"]).to(device=args.device)
         self.optim,self.scheduler = self.configure_optimizers()
         self.prepare_training()
-        # Wandb
-        run_id = wandb.util.generate_id()
-        self.args.run_id = run_id
-        wandb.init(project='MaskGit', config=self.args, id=run_id, resume='allow')
+        
+        if self.args.log:
+            # Wandb
+            run_id = wandb.util.generate_id()
+            self.args.run_id = run_id
+            wandb.init(project='MaskGit', config=self.args, id=run_id, resume='allow')
 
-        # Tensorboard
-        self.writer = SummaryWriter(f"runs/{run_id}")
+            # Tensorboard
+            self.writer = SummaryWriter(f"runs/{run_id}")
+            
+            os.makedirs(os.path.join("checkpoints", run_id), exist_ok=True)
+            os.makedirs(os.path.join("transformer_checkpoints", run_id), exist_ok=True)
         
     @staticmethod
     def prepare_training():
         os.makedirs("transformer_checkpoints", exist_ok=True)
-        
+        os.makedirs("checkpoints", exist_ok=True)
 
     def train_one_epoch(self, train_loader):
         self.model.train()
@@ -55,8 +60,9 @@ class TrainTransformer:
             # update progress bar
             pbar.set_description(f"(train) Epoch {epoch} - Loss: {loss.item():.4f}", refresh=False)
             
-        self.writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
-        wandb.log({"Loss/train": total_loss / len(train_loader)})
+        if self.args.log:
+            self.writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
+            wandb.log({"Loss/train": total_loss / len(train_loader)})
         return total_loss / len(train_loader)
             
 
@@ -76,8 +82,9 @@ class TrainTransformer:
             # update progress bar
             pbar.set_description(f"(val) Epoch {epoch} - Loss: {loss.item():.4f}", refresh=False)
         
-        self.writer.add_scalar("Loss/val", total_loss / len(val_loader), epoch)
-        wandb.log({"Loss/val": total_loss / len(val_loader)})
+        if self.args.log:
+            self.writer.add_scalar("Loss/val", total_loss / len(val_loader), epoch)
+            wandb.log({"Loss/val": total_loss / len(val_loader)})
         return total_loss / len(val_loader)
 
     def configure_optimizers(self):
@@ -87,14 +94,21 @@ class TrainTransformer:
     
     def save_checkpoint(self, epoch, checkpoint_path=None):
         if checkpoint_path is None:
-            checkpoint_path = f"transformer_checkpoints/epoch_{epoch}.pt"
+            checkpoint_path = f"epoch_{epoch}.pt"
+            
+        # save transformer checkpoint
+        torch.save(self.model.transformer.state_dict(), os.path.join("transformer_checkpoints", self.args.run_id, checkpoint_path))
+        print(f"Saved transformer checkpoint at {checkpoint_path}")
+        
+        # save model checkpoint
         torch.save({
             'state_dict': self.model.state_dict(),
             'optimizer': self.optim.state_dict(),
             'last_epoch': epoch,
             'args': self.args
-        }, checkpoint_path)
-        print(f"Saved checkpoint at epoch {epoch} to {checkpoint_path}")
+        }, os.path.join(self.args.checkpoint_path, self.args.run_id, checkpoint_path))
+        
+        print(f"Saved model checkpoint at {checkpoint_path}")
 
 
 if __name__ == '__main__':
@@ -102,7 +116,7 @@ if __name__ == '__main__':
     #[x] TODO2:check your dataset path is correct 
     parser.add_argument('--train_d_path', type=str, default="./cat_face/train/", help='Training Dataset Path')
     parser.add_argument('--val_d_path', type=str, default="./cat_face/val/", help='Validation Dataset Path')
-    parser.add_argument('--checkpoint-path', type=str, default='./checkpoints/last_ckpt.pt', help='Path to checkpoint.')
+    parser.add_argument('--checkpoint-path', type=str, default='./checkpoints/', help='Path to checkpoint.')
     parser.add_argument('--device', type=str, default="cuda:0", help='Which device the training is on.')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of worker')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
@@ -117,6 +131,10 @@ if __name__ == '__main__':
     parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate.')
 
     parser.add_argument('--MaskGitConfig', type=str, default='config/MaskGit.yml', help='Configurations for TransformerVQGAN')
+    
+    # log
+    parser.add_argument('--log', action='store_false', help='Use tensorboard for logging')
+    parser.add_argument('--run-id', type=str, default="", help='Run ID for wandb')
 
     args = parser.parse_args()
 
@@ -150,4 +168,4 @@ if __name__ == '__main__':
             
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            train_transformer.save_checkpoint(epoch, "transformer_checkpoints/best_ckpt.pt")
+            train_transformer.save_checkpoint(epoch, "best_model.pt")
