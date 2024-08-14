@@ -29,7 +29,7 @@ class MaskGIT:
         os.makedirs("mask_scheduling", exist_ok=True)
         os.makedirs("imga", exist_ok=True)
 
-##TODO3 step1-1: total iteration decoding  
+##[x] TODO3 step1-1: total iteration decoding  
 #mask_b: iteration decoding initial mask, where mask_b is true means mask
     def inpainting(self,image,mask_b,i): #MakGIT inference
         maska = torch.zeros(self.total_iter, 3, 16, 16) #save all iterations of masks in latent domain
@@ -41,23 +41,22 @@ class MaskGIT:
 
         self.model.eval()
         with torch.no_grad():
-            z_indices = None #z_indices: masked tokens (b,16*16)
+            z_indices = self.model.encode_to_z(image)[1] #z_indices: masked tokens (b,16*16)
             mask_num = mask_b.sum() #total number of mask token 
             z_indices_predict=z_indices
             mask_bc=mask_b
             mask_b=mask_b.to(device=self.device)
             mask_bc=mask_bc.to(device=self.device)
             
-            raise Exception('TODO3 step1-1!')
             ratio = 0
             #iterative decoding for loop design
             #Hint: it's better to save original mask and the updated mask by scheduling separately
             for step in range(self.total_iter):
                 if step == self.sweet_spot:
                     break
-                ratio = None #this should be updated
+                ratio = (step+1) / self.total_iter
     
-                z_indices_predict, mask_bc = self.model.inpainting()
+                z_indices_predict, mask_bc = self.model.inpainting(z_indices_predict, mask_bc, ratio, self.mask_func)
 
                 #static method yon can modify or not, make sure your visualization results are correct
                 mask_i=mask_bc.view(1, 16, 16)
@@ -120,16 +119,16 @@ if __name__ == '__main__':
     parser.add_argument('--MaskGitConfig', type=str, default='config/MaskGit.yml', help='Configurations for MaskGIT')
     
     
-#TODO3 step1-2: modify the path, MVTM parameters
-    parser.add_argument('--load-transformer-ckpt-path', type=str, default='', help='load ckpt')
+#[x] TODO3 step1-2: modify the path, MVTM parameters
+    parser.add_argument('--load-transformer-ckpt-path', type=str, default='./transformer_checkpoints/best_model.pt', help='load ckpt')
     
     #dataset path
     parser.add_argument('--test-maskedimage-path', type=str, default='./cat_face/masked_image', help='Path to testing image dataset.')
-    parser.add_argument('--test-mask-path', type=str, default='./mask64', help='Path to testing mask dataset.')
+    parser.add_argument('--test-mask-path', type=str, default='./cat_face/mask64', help='Path to testing mask dataset.')
     #MVTM parameter
-    parser.add_argument('--sweet-spot', type=int, default=0, help='sweet spot: the best step in total iteration')
-    parser.add_argument('--total-iter', type=int, default=0, help='total step for mask scheduling')
-    parser.add_argument('--mask-func', type=str, default='0', help='mask scheduling function')
+    parser.add_argument('--sweet-spot', type=int, default=10, help='sweet spot: the best step in total iteration')
+    parser.add_argument('--total-iter', type=int, default=10, help='total step for mask scheduling')
+    parser.add_argument('--mask-func', type=str, default='cosine', help='mask scheduling function')
 
     args = parser.parse_args()
 
