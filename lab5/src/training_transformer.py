@@ -20,25 +20,13 @@ class TrainTransformer:
         self.model = VQGANTransformer(MaskGit_CONFIGS["model_param"]).to(device=args.device)
         self.optim,self.scheduler = self.configure_optimizers()
         self.prepare_training()
-        
-        if self.args.log:
-            # Wandb
-            run_id = wandb.util.generate_id()
-            self.args.run_id = run_id
-            wandb.init(project='MaskGit', config=self.args, id=run_id, resume='allow')
 
-            # Tensorboard
-            self.writer = SummaryWriter(f"runs/{run_id}")
-            
-            os.makedirs(os.path.join("checkpoints", run_id), exist_ok=True)
-            os.makedirs(os.path.join("transformer_checkpoints", run_id), exist_ok=True)
-        
     @staticmethod
     def prepare_training():
         os.makedirs("transformer_checkpoints", exist_ok=True)
         os.makedirs("checkpoints", exist_ok=True)
 
-    def train_one_epoch(self, train_loader):
+    def train_one_epoch(self, train_loader, epoch):
         self.model.train()
         
         total_loss = 0.0
@@ -67,7 +55,7 @@ class TrainTransformer:
             
 
     @torch.no_grad()
-    def eval_one_epoch(self, val_loader):
+    def eval_one_epoch(self, val_loader, epoch):
         self.model.eval()
         
         total_loss = 0.0
@@ -97,26 +85,83 @@ class TrainTransformer:
             checkpoint_path = f"epoch_{epoch}.pt"
             
         # save transformer checkpoint
-        torch.save(self.model.transformer.state_dict(), os.path.join("transformer_checkpoints", self.args.run_id, checkpoint_path))
+        torch.save(self.model.transformer.state_dict(), os.path.join("transformer_checkpoints", f"{self.args.run_name}-{self.args.run_id}", checkpoint_path))
         print(f"Saved transformer checkpoint at {checkpoint_path}")
         
-        # save model checkpoint
+        # save MaskGit checkpoint
         torch.save({
             'state_dict': self.model.state_dict(),
             'optimizer': self.optim.state_dict(),
             'last_epoch': epoch,
             'args': self.args
-        }, os.path.join(self.args.checkpoint_path, self.args.run_id, checkpoint_path))
+        }, os.path.join(self.args.ckpt_dir, f"{self.args.run_name}-{self.args.run_id}", checkpoint_path))
         
-        print(f"Saved model checkpoint at {checkpoint_path}")
+        print(f"Saved MaskGit checkpoint at {checkpoint_path}")
 
+    def load_checkpoint(self, checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        self.model.load_state_dict(checkpoint['state_dict'])
+        self.optim.load_state_dict(checkpoint['optimizer'])
+        self.args.start_from_epoch = checkpoint['last_epoch']
+        self.args.learning_rate = checkpoint['args'].learning_rate
+        self.args.run_id = checkpoint['args'].run_id
+        print(f"{checkpoint['args'].run_id} loaded from {checkpoint_path}")
+        
+        prev_log = self.args.log
+        self.args.log = False
+        best_val_loss = self.eval_one_epoch(val_loader, self.args.start_from_epoch)
+        self.args.log = prev_log
+        
+        return best_val_loss
+    
+    def init_logging(self):
+        # Wandb
+        if not args.resume_path:
+            run_id = wandb.util.generate_id()
+            self.args.run_id = run_id
+
+        wandb.init(project='MaskGit', config=self.args, id=self.args.run_id, resume='allow')
+        self.args.run_name = wandb.run.name
+
+        # Tensorboard
+        self.writer = SummaryWriter(f"runs/{self.args.run_name}-{self.args.run_id}")
+        
+        os.makedirs(os.path.join("checkpoints", f"{self.args.run_name}-{self.args.run_id}"), exist_ok=True)
+        os.makedirs(os.path.join("transformer_checkpoints", f"{self.args.run_name}-{self.args.run_id}"), exist_ok=True)
+        
+    def save_model_to_wandb(self, epoch):
+        try:
+            os.makedirs(f"tmp_{self.args.run_name}/models", exist_ok=True)
+            # copy best transformer checkpoint to models folder
+            os.system(f"cp transformer_checkpoints/{self.args.run_name}-{self.args.run_id}/best_model.pt tmp_{self.args.run_name}/models/{self.args.run_name}-best-transformer.pt")
+            wandb.save(
+                os.path.abspath(f"tmp_{self.args.run_name}/models/{self.args.run_name}-best-transformer.pt"), 
+                base_path=os.path.abspath(f"tmp_{self.args.run_name}")
+            )
+            print("Saved models to wandb")
+        except Exception as e:
+            print(f"Failed to save models to wandb: {e}")
+            
+    def save_tensorboard_to_wandb(self):
+        try:
+            wandb.save(f"runs/{self.args.run_name}-{self.args.run_id}")
+            print("Saved tensorboard logs to wandb")
+        except Exception as e:
+            print(f"Failed to save tensorboard logs to wandb: {e}")
+            
+    def finish_training(self):
+        if self.args.log:
+            self.writer.close()
+            wandb.finish()
+        # remove models folder
+        os.system(f"rm -r tmp_{self.args.run_name}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="MaskGIT")
     #[x] TODO2:check your dataset path is correct 
     parser.add_argument('--train_d_path', type=str, default="./cat_face/train/", help='Training Dataset Path')
     parser.add_argument('--val_d_path', type=str, default="./cat_face/val/", help='Validation Dataset Path')
-    parser.add_argument('--checkpoint-path', type=str, default='./checkpoints/', help='Path to checkpoint.')
+    parser.add_argument('--ckpt-dir', type=str, default='./checkpoints/', help='Path to checkpoint.')
     parser.add_argument('--device', type=str, default="cuda:0", help='Which device the training is on.')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of worker')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
@@ -135,6 +180,7 @@ if __name__ == '__main__':
     # log
     parser.add_argument('--log', action='store_false', help='Use tensorboard for logging')
     parser.add_argument('--run-id', type=str, default="", help='Run ID for wandb')
+    parser.add_argument('--resume-path', type=str, default=None, help='Path to resume training')
 
     args = parser.parse_args()
 
@@ -158,10 +204,17 @@ if __name__ == '__main__':
                                 shuffle=False)
     
 #[x] TODO2 step1-5:
-    best_val_loss = float('inf')
+    if args.resume_path:
+        best_val_loss = train_transformer.load_checkpoint(args.resume_path)
+    else:
+        best_val_loss = float('inf')
+    
+    if train_transformer.args.log:
+        train_transformer.init_logging()
+
     for epoch in range(args.start_from_epoch+1, args.epochs+1):
-        train_loss = train_transformer.train_one_epoch(train_loader)
-        val_loss = train_transformer.eval_one_epoch(val_loader)
+        train_loss = train_transformer.train_one_epoch(train_loader, epoch)
+        val_loss = train_transformer.eval_one_epoch(val_loader, epoch)
         
         if epoch % args.save_per_epoch == 0:
             train_transformer.save_checkpoint(epoch)
@@ -169,3 +222,7 @@ if __name__ == '__main__':
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             train_transformer.save_checkpoint(epoch, "best_model.pt")
+    
+    train_transformer.save_model_to_wandb(train_transformer.args.epochs)
+    train_transformer.save_tensorboard_to_wandb()
+    train_transformer.finish_training()

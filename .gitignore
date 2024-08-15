@@ -227,6 +227,6 @@ lab5/src/cat_face/*
 lab5/src/runs/*
 lab5/src/test_results/*
 lab5/src/mask_scheduling/*
-lab5/src/img/*
+lab5/src/imga/*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
