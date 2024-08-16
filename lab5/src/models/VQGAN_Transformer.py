@@ -59,12 +59,6 @@ class MaskGit(nn.Module):
             return (lambda ratio: np.cos(ratio * np.pi / 2))
         elif mode == "square":
             return lambda ratio: 1 - ratio ** 2
-        elif mode == "cubic":
-            return lambda ratio: 1 - ratio ** 3
-        elif mode == "square_root":
-            return lambda ratio: 1 - np.sqrt(ratio)
-        elif mode == "constant":
-            return lambda ratio: 1
         else:
             raise NotImplementedError
 
