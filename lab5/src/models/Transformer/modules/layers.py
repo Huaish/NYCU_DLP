@@ -46,6 +46,7 @@ class MultiHeadAttention(nn.Module):
         # Apply attention to V
         x = attn @ v # (batch_size, num_image_tokens, num_heads, head_dim)
         x = x.transpose(1, 2).reshape(x.shape[0], x.shape[2], self.dim) # (batch_size, num_image_tokens, dim)
+        x = self.out(x)
         return x
 
 class MLP(nn.Sequential):
