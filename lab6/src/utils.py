@@ -6,9 +6,10 @@ def args_parser():
     parser = argparse.ArgumentParser(description="MaskGIT")
     parser.add_argument('--dr', type=str, default="../iclevr/", help='Training Dataset Path')
     parser.add_argument('--train-json', type=str, default="train.json", help='Training JSON file')
-    parser.add_argument('--test-json', type=str, default="train.json", help='Testing JSON file')
+    parser.add_argument('--test-json', type=str, default="new_test.json", help='Testing JSON file')
     parser.add_argument('--object-json', type=str, default="objects.json", help='Object JSON file')
-    parser.add_argument('--ckpt-dir', type=str, default='./checkpoints/', help='Path to checkpoint.')
+    parser.add_argument('--ckpt-dir', type=str, default='./checkpoints/', help='Path to checkpoint folder')
+    parser.add_argument('--ckpt-path', type=str, default='./checkpoints/final-model.pt', help='Path to checkpoint')
     parser.add_argument('--device', type=str, default="cuda:0", help='Which device the training is on.')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of worker')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
@@ -38,16 +39,15 @@ def init_logging(project, config, resume_path=None):
         run_id = wandb.util.generate_id()
         config.run_id = run_id
 
+    # Wandb
+    wandb.init(project=project, config=config, id=config.run_id, resume='allow', sync_tensorboard=True)
+    config.run_name = wandb.run.name
+
     # Tensorboard
     logdir = f"runs/{config.run_name}-{config.run_id}"
     writer = SummaryWriter(logdir)
 
-    # Wandb
     wandb.tensorboard.patch(root_logdir=logdir)
-    wandb.init(project=project, config=config, id=config.run_id, resume='allow')
-    config.run_name = wandb.run.name
-
-    
     return config, writer
 
 def save_model_to_wandb(model, tmp_dir):
@@ -76,7 +76,7 @@ def show_images(images, title="", save_path="images.png", nrow=8, denoising_proc
     from torchvision.utils import make_grid
 
     if isinstance(images, list):
-        images = torch.stack(images)
+        images = torch.stack(images).cpu()
         
     # (-1, 1) -> (0, 1)
     images_tensor = images * 0.5 + 0.5
