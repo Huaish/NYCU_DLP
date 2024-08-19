@@ -228,5 +228,6 @@ lab5/src/runs/*
 lab5/src/test_results/*
 lab5/src/mask_scheduling/*
 lab5/src/imga/*
+lab6/iclevr/*
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python
