@@ -47,7 +47,7 @@ def init_logging(project, config, resume_path=None):
     logdir = f"runs/{config.run_name}-{config.run_id}"
     writer = SummaryWriter(logdir)
 
-    wandb.tensorboard.patch(root_logdir=logdir)
+    # wandb.tensorboard.patch(root_logdir=logdir)
     return config, writer
 
 def save_model_to_wandb(model, tmp_dir):
