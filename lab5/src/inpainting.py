@@ -135,7 +135,7 @@ if __name__ == '__main__':
     t=MaskedImage(args)
     MaskGit_CONFIGS = yaml.safe_load(open(args.MaskGitConfig, 'r'))
     maskgit = MaskGIT(args, MaskGit_CONFIGS)
-
+    print(f"Start Inpainting using {args.mask_func} mask scheduling function")
     i=0
     for image, mask in zip(t.mi_ori, t.mask_ori):
         image=image.to(device=args.device)

@@ -144,7 +144,7 @@ class TrainTransformer:
             
     def save_tensorboard_to_wandb(self):
         try:
-            wandb.save(f"runs/{self.args.run_name}-{self.args.run_id}")
+            wandb.save(os.path.abspath(f"runs/{self.args.run_name}-{self.args.run_id}"), base_path=os.path.abspath("runs"))
             print("Saved tensorboard logs to wandb")
         except Exception as e:
             print(f"Failed to save tensorboard logs to wandb: {e}")
