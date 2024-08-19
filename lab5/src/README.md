@@ -33,7 +33,7 @@ python inpainting.py
 - [x] MultiHeadAttetion forward (./models/Transformer/modules/layers.py class MultiHeadAttetion)
 - [x] MaskGIT STAGE2 Training Transformer (./training_transformer.py ./models/VQGAN_Transformer.py)
 - [x] Implement functions for inpainting (./inpainting.py ./models/VQGAN_Transformer.py)
-- [ ] Experiment Score
+- [x] Experiment Score
 
   
 

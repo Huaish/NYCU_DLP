@@ -72,7 +72,7 @@ def encode_to_z(self, x):
 ```
 
 The `gamma_func` function is designed to generate the mask rate using different scheduling methods like linear, cosine, or square. 
-The reference paper, MaskGIT, mentioned that the gamma function is used in training and inference. During training, the function randomly generates a mask rate. During inference, however, it calculates the mask rate based on the current step and the total number of steps, adjusting it according to the chosen scheduling method.
+During training, the function randomly generates a mask rate. During inference, however, it calculates the mask rate based on the current step and the total number of steps, adjusting it according to the chosen scheduling method.
 
 ```python
 def gamma_func(self, mode="cosine"):
@@ -91,7 +91,7 @@ def gamma_func(self, mode="cosine"):
 The forward function for the Masked VQ-Transformer Model (MVTM) works as follows:
 
 1. I first encode the input image into latent code `z_q` and quantized latent code `z_indices`.
-2. Next, I randomly generate a mask rate `ratio` and use the `gamma_func` to determine the actual mask ratio `mask_ratio`.
+2. Next, I randomly generate a mask ratio `mask ratio` between 0 and 1.
 3. Using this mask ratio, I create a mask that selectively hides some tokens in `z_indices`.
 4. The masked `z_indices` are then passed through the transformer to make predictions, producing logits.
 5. Finally, I return both the logits (the transformer’s predicted probabilities) and `z_indices` (the ground truth).
@@ -103,7 +103,6 @@ def forward(self, x):
     
     # In training, the mask ratio is randomly sampled
     ratio = np.random.uniform(0, 1)
-    mask_ratio = self.gamma(ratio)
     mask = torch.rand_like(z_indices.float()) < mask_ratio
     
     # Mask the tokens
@@ -263,5 +262,11 @@ def inpainting(self, z_indices, mask_bc, ratio, mask_func):
 
 ### A. Comparison between different mask scheduling methods
 
-I implemented three mask scheduling methods: linear, cosine, and square. As the results table shows, the cosine scheduling method achieved the best FID score, followed by the square method. The linear method had the worst performance. This suggests that the cosine and square scheduling methods are more effective for inpainting tasks than the linear method.
+I implemented three mask scheduling methods: linear, cosine, and square. As the results table shows, the linear scheduling method achieved the best FID score, followed by the square method. The cosine method had the lowest FID score. This suggests that the linear scheduling method is more effective at inpainting images than the other two methods.
 
+
+| Method | Average FID Score | Standard Deviation |
+|:------:|:-----------------:|:------------------:|
+| Cosine |       27.06       |        0.32        |
+| Linear |       26.98       |        0.28        |
+| Square |       27.00       |        0.28        |

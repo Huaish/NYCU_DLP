@@ -51,4 +51,4 @@ From the following images, we can observe that the cosine and square methods fil
 - optimizer: Adam
 - sweet spot: 8
 - total iteration: 8
-- mask function: cosine
+- mask function: linear
