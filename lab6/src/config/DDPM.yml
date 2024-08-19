@@ -1,0 +1,10 @@
+---
+MODEL_NAME: DDPM
+
+model_param:
+  num_labels: 24
+  dim: 256
+
+noise_schedule:
+  num_train_timesteps: 1000
+  beta_schedule: "squaredcos_cap_v2"
