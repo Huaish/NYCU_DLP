@@ -68,8 +68,7 @@ class MaskGit(nn.Module):
         _, z_indices = self.encode_to_z(x)
         
         # In training, the mask ratio is randomly sampled
-        ratio = np.random.uniform(0, 1)
-        mask_ratio = self.gamma(ratio)
+        mask_ratio = np.random.uniform(0, 1)
         mask = torch.rand_like(z_indices.float()) < mask_ratio
         
         # Mask the tokens
