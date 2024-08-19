@@ -32,6 +32,7 @@ class TrainDDPM:
             
     def train(self, train_loader):
         for epoch in range(self.args.start_from_epoch+1, self.args.epochs+1):
+            self.args.current_epoch = epoch
             self.train_one_epoch(train_loader, epoch)
             
             if epoch % self.args.save_per_epoch == 0:
@@ -77,12 +78,12 @@ class TrainDDPM:
         if self.args.log:
             import wandb
             self.writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
-            wandb.log({"Loss/train": total_loss / len(train_loader)}, step=epoch)
+            wandb.log({"Loss/train": total_loss / len(train_loader)})
         return total_loss / len(train_loader)
  
     def save_checkpoint(self, checkpoint_path=None):
         if checkpoint_path is None:
-            checkpoint_path = f"epoch_{self.args.epoch}.pt"
+            checkpoint_path = f"epoch_{self.args.current_epoch}.pt"
 
         # save checkpoint
         torch.save({
