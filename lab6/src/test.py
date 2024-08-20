@@ -6,7 +6,7 @@ from dataloader import LoadTestData
 import yaml
 from torch.utils.data import DataLoader
 from models.ddpm import ConditionalDDPM
-from utils import args_parser, show_images
+from utils import args_parser, show_images, set_seed
 from diffusers import DDPMScheduler
 from evaluator import evaluation_model
 
@@ -54,7 +54,9 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
 
 if __name__ == '__main__':
     args = args_parser()
-    
+    set_seed(args.seed)
+    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     test_dataset = LoadTestData(root=args.dr, test_json=args.test_json, object_json=args.object_json)
     test_loader = DataLoader(test_dataset, batch_size=1, num_workers=args.num_workers, shuffle=False)
     print(f"Load {args.test_json} dataset with {len(test_loader)} labels")

@@ -15,6 +15,7 @@ def args_parser():
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
     parser.add_argument('--partial', type=float, default=1.0, help='Number of epochs to train (default: all)')    
     parser.add_argument('--accum-grad', type=int, default=10, help='Number for gradient accumulation.')
+    parser.add_argument('--seed', type=int, default=0, help='Random seed.')
 
     parser.add_argument('--epochs', type=int, default=300, help='Number of epochs to train.')
     parser.add_argument('--save-per-epoch', type=int, default=5, help='Save CKPT per ** epochs(defcault: 1)')
@@ -90,10 +91,27 @@ def show_images(images, title="", save_path="images.png", nrow=8, denoising_proc
 
     # show grids
     plt.clf()
-    plt.figure(figsize=(15, 2) if denoising_process else (15, 10))
+    plt.figure(figsize=(15, 2) if denoising_process else (15, 8))
     # Convert from CHW to HWC
     plt.imshow(grid.permute(1, 2, 0).clip(0, 1))  
     plt.axis('off')
     plt.margins(0, 0)
     plt.title(title if title else ('Denoising Process (Noisy to Clear)' if denoising_process else 'Image Grid'))
     plt.savefig(save_path)
+    
+    
+def set_seed(seed):
+    import random
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.enabled = False
+
+    print(f"Set seed {seed} for reproducibility")
