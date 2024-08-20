@@ -17,7 +17,7 @@ def load_checkpoint(ckpt_path, DDPM_CONFIGS, device):
     return model
 
 @torch.no_grad()
-def inference(model, test_loader, DDPM_CONFIGS, device, img_name=""):
+def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
     model.eval()
     noise_schedule = DDPMScheduler(**DDPM_CONFIGS['noise_schedule'])
     evaluator = evaluation_model()
@@ -44,12 +44,12 @@ def inference(model, test_loader, DDPM_CONFIGS, device, img_name=""):
 
         # show denoising process
         if i < 5:
-            show_images(denoising_images, title=f"Denoising process image {i+1}", save_path=f"{img_name}-images{i+1}.png", denoising_process=True)
+            show_images(denoising_images, title=f"Denoising process image {i+1}", save_path=f"{test_json}-images{i+1}.png", denoising_process=True)
         
         # update progress bar
         pbar.set_description(f"(test) Accuracy: {acc:.4f}")
         
-    show_images(results, title="Final", save_path=f"{img_name}-images-grid.png")
+    show_images(results, title=f"The synthetic image grid on {test_json}.json. (Acc {acc:.4f})", save_path=f"{test_json}-images-grid.png")
     return total_acc / len(test_loader), results
 
 if __name__ == '__main__':
@@ -62,5 +62,5 @@ if __name__ == '__main__':
     DDPM_CONFIGS = yaml.safe_load(open(args.config, 'r'))
     model = load_checkpoint(args.ckpt_path, DDPM_CONFIGS, args.device)
 
-    acc, results = inference(model, test_loader, DDPM_CONFIGS, args.device, img_name=os.path.splitext(os.path.basename(args.test_json))[0])
+    acc, results = inference(model, test_loader, DDPM_CONFIGS, args.device, test_json=os.path.splitext(os.path.basename(args.test_json))[0])
     print(f"Accuracy: {acc:.4f}")
