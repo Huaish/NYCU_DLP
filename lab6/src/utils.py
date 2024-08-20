@@ -9,7 +9,7 @@ def args_parser():
     parser.add_argument('--test-json', type=str, default="new_test.json", help='Testing JSON file')
     parser.add_argument('--object-json', type=str, default="objects.json", help='Object JSON file')
     parser.add_argument('--ckpt-dir', type=str, default='./checkpoints/', help='Path to checkpoint folder')
-    parser.add_argument('--ckpt-path', type=str, default='./checkpoints/final-model.pt', help='Path to checkpoint')
+    parser.add_argument('--ckpt-path', type=str, default='./checkpoints/DL_lab6_313551097_鄭淮薰.pth', help='Path to checkpoint')
     parser.add_argument('--device', type=str, default="cuda:0", help='Which device the training is on.')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of worker')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
@@ -89,9 +89,11 @@ def show_images(images, title="", save_path="images.png", nrow=8, denoising_proc
     grid = make_grid(images_tensor, nrow=nrow, padding=2)
 
     # show grids
-    plt.figure(figsize=(20, 5) if denoising_process else (12, 12))
+    plt.clf()
+    plt.figure(figsize=(15, 2) if denoising_process else (15, 10))
     # Convert from CHW to HWC
     plt.imshow(grid.permute(1, 2, 0).clip(0, 1))  
     plt.axis('off')
+    plt.margins(0, 0)
     plt.title(title if title else ('Denoising Process (Noisy to Clear)' if denoising_process else 'Image Grid'))
     plt.savefig(save_path)

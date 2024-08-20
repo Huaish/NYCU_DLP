@@ -17,7 +17,7 @@ def load_checkpoint(ckpt_path, DDPM_CONFIGS, device):
     return model
 
 @torch.no_grad()
-def inference(model, test_loader, DDPM_CONFIGS, device):
+def inference(model, test_loader, DDPM_CONFIGS, device, img_name=""):
     model.eval()
     noise_schedule = DDPMScheduler(**DDPM_CONFIGS['noise_schedule'])
     evaluator = evaluation_model()
@@ -34,33 +34,33 @@ def inference(model, test_loader, DDPM_CONFIGS, device):
             noise_pred = model(sample, timesteps, label)
             sample = noise_schedule.step(noise_pred, timesteps, sample).prev_sample
             
-            if step % 100 == 0:
+            if (step+1) % 100 == 0:
                 denoising_images.append(sample.squeeze(0))
                 
         # compute accuracy
-        acc = evaluator.eval(denoising_images[-1].unsqueeze(0), label)
+        acc = evaluator.eval(sample, label)
         total_acc += acc
-        results.append(denoising_images[-1].squeeze(0))
+        results.append(sample.squeeze(0))
 
         # show denoising process
         if i < 5:
-            show_images(denoising_images, title=f"Image {i}", save_path=f"images_{i}.png", denoising_process=True)
+            show_images(denoising_images, title=f"Denoising process image {i+1}", save_path=f"{img_name}-images{i+1}.png", denoising_process=True)
         
         # update progress bar
         pbar.set_description(f"(test) Accuracy: {acc:.4f}")
         
-    show_images(results, title="Final", save_path="images_final.png")
+    show_images(results, title="Final", save_path=f"{img_name}-images-grid.png")
     return total_acc / len(test_loader), results
 
 if __name__ == '__main__':
     args = args_parser()
     
     test_dataset = LoadTestData(root=args.dr, test_json=args.test_json, object_json=args.object_json)
-    test_loader = DataLoader(test_dataset, batch_size=1, num_workers=args.num_workers, shuffle=True)
-    print(f"Test dataset loaded with {len(test_dataset)} samples.")
+    test_loader = DataLoader(test_dataset, batch_size=1, num_workers=args.num_workers, shuffle=False)
+    print(f"Load {args.test_json} dataset with {len(test_loader)} labels")
 
     DDPM_CONFIGS = yaml.safe_load(open(args.config, 'r'))
     model = load_checkpoint(args.ckpt_path, DDPM_CONFIGS, args.device)
 
-    acc, results = inference(model, test_loader, DDPM_CONFIGS, args.device)
+    acc, results = inference(model, test_loader, DDPM_CONFIGS, args.device, img_name=os.path.splitext(os.path.basename(args.test_json))[0])
     print(f"Accuracy: {acc:.4f}")
