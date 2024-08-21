@@ -51,7 +51,6 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
 
     # show synthetic images grid
     acc = total_acc / len(test_loader)
-    results = torch.cat(results, dim=0)
     show_images(results, title=f"The synthetic image grid on {test_json}.json. (Acc {acc:.4f})", save_path=f"{test_json}-images-grid.png")
     return total_acc / len(test_loader), results
 
