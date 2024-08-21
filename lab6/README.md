@@ -12,6 +12,7 @@ In this lab, we implement a generative model called Diffusion Probabilistic Mode
 ## II. Implementation details
 
 ### A. Model
+
 > Reference 1: [https://github.com/huggingface/diffusion-models-class](https://github.com/huggingface/diffusion-models-class)   
 > Reference 2: [https://huggingface.co/docs/diffusers/tutorials/basic_training](https://huggingface.co/docs/diffusers/tutorials/basic_training)
 
@@ -47,8 +48,8 @@ class ConditionalDDPM(nn.Module):
             class_embed_type="identity",
             num_class_embeds=dim
         )
-        
-        
+
+
     def forward(self, x, timesteps, label):
         label = self.label_embedding(label)
         return self.diffusion(x, timesteps, label).sample
@@ -69,7 +70,6 @@ noise_schedule = DDPMScheduler(
 
 ![nosie_level.png](img/noise_level.png)
 
-
 ### C. Dataloader
 
 For the Dataloader part, I designed two categories: `LoadTrainData` and `LoadTestData`. `LoadTrainData` is used to load training data, convert the image into the format required by the model, and convert the label into a one-hot encoded tensor. `LoadTestData` is used to load test data and convert label into one-hot encoded tensor.
@@ -84,33 +84,34 @@ class LoadTrainData(torchData):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
-        
+
         with open(train_json, 'r') as f:
             data = json.load(f)
             self.image_path, self.labels = zip(*data.items())
-            
+
         with open(object_json, 'r') as f:
             self.label_map = json.load(f)
-            
+
     def __len__(self):
         return len(self.labels)
-    
+
     @property
     def info(self):
         return f"\nNumber of Training Data: {len(self.labels)}"
-    
+
     def __getitem__(self, index):
         # Load and transform image
         img_path = os.path.join(self.root, self.image_path[index])
         img = self.transform(imgloader(img_path))
-            
+
         # Convert labels to a multi-hot tensor
         label_tensor = torch.zeros(len(self.label_map))
         for label in self.labels[index]:
             label_tensor[self.label_map[label]] = 1
-            
+
         return img, label_tensor
 ```
+
 ```python
 class LoadTestData(torchData):
     def __init__(self, root, test_json, object_json):
@@ -121,28 +122,29 @@ class LoadTestData(torchData):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
-        
+
         with open(test_json, 'r') as f:
             self.labels = json.load(f)
-        
+
         with open(object_json, 'r') as f:
             self.label_map = json.load(f)
-            
+
     def __len__(self):
         return len(self.labels)
-    
+
     @property
     def info(self):
         return f"\nNumber of Test Data: {len(self.labels)}"
-    
+
     def __getitem__(self, index):
         # Convert labels to a multi-hot tensor
         label_tensor = torch.zeros(len(self.label_map))
         for label in self.labels[index]:
             label_tensor[self.label_map[label]] = 1
-            
+
         return label_tensor
 ```
+
 ### D. Training
 
 In the training phase, I designed a `TrainDDPM` class for training the DDPM model. During training, random noise is added to clean images, and the model predicts the noise. The Mean Squared Error (MSE) Loss between the predicted noise and the true noise is then calculated. At the end of each epoch, I save the model checkpoint and log the training loss. The main training process in each epoch includes the following steps:
@@ -173,61 +175,63 @@ class TrainDDPM:
             self.args, self.writer = init_logging("DDPM", args)
             self.tmp_dir = f"tmp_{self.args.run_name}"
             wandb.watch(self.model)
-            
+
         # create checkpoint directory
         os.makedirs(f"{self.args.ckpt_dir}/{self.args.run_name}-{self.args.run_id}", exist_ok=True)
-            
+```
+
+```python
     def train(self, train_loader):
         for epoch in range(self.args.start_from_epoch+1, self.args.epochs+1):
             self.args.current_epoch = epoch
             self.train_one_epoch(train_loader, epoch)
-            
+
             if epoch % self.args.save_per_epoch == 0:
                 self.save_checkpoint()
-        
+
         if self.args.log:
             save_model_to_wandb(self.model, self.tmp_dir)
         self.finish_training()
 
     def train_one_epoch(self, train_loader, epoch):
         self.model.train()
-        
+
         total_loss = 0.0
         for step, (image, label) in (pbar := tqdm(enumerate(train_loader), total=len(train_loader))):
             image, label = image.to(self.args.device), label.to(self.args.device)
-            
+
             # sample noise
             noise = torch.randn_like(image).to(self.args.device)
-            
+
             # sample timesteps
             timesteps = torch.randint(0, self.noise_schedule.config.num_train_timesteps, (image.shape[0],)).to(self.args.device)
-            
+
             # add noise to image
             noisy_image = self.noise_schedule.add_noise(image, noise, timesteps)
-            
+
             # forward pass
             noise_pred = self.model(noisy_image, timesteps, label)
-            
+
             # compute loss
             loss = self.loss_fn(noise_pred, noise)
             total_loss += loss.item()
-            
+
             # backprop
             loss.backward()
-            
+
             if step % self.args.accum_grad == 0:
                 self.optim.step()
                 self.optim.zero_grad()
-            
+
             # update progress bar
             pbar.set_description(f"(train) Epoch {epoch} - Loss: {loss.item():.4f}", refresh=False)
-            
+
         if self.args.log:
             import wandb
             self.writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
             wandb.log({"Loss/train": total_loss / len(train_loader)})
         return total_loss / len(train_loader)
- 
+
     def save_checkpoint(self, checkpoint_path=None):
         if checkpoint_path is None:
             checkpoint_path = f"epoch_{self.args.current_epoch}.pt"
@@ -238,7 +242,7 @@ class TrainDDPM:
             'optimizer': self.optim.state_dict(),
             'args': self.args
         }, os.path.join(self.args.ckpt_dir, f"{self.args.run_name}-{self.args.run_id}", checkpoint_path))
-        
+
         print(f"Saved model checkpoint at {checkpoint_path}")
 
     def load_checkpoint(self, checkpoint_path):
@@ -249,7 +253,7 @@ class TrainDDPM:
         self.args.run_id = checkpoint['args'].run_id
         self.args.start_from_epoch = checkpoint['args'].current_epoch
         print(f"{checkpoint['args'].run_id} loaded from {checkpoint_path}")
-           
+
     def finish_training(self):
         if self.args.log:
             import wandb
@@ -257,18 +261,18 @@ class TrainDDPM:
             wandb.finish()
         os.system(f"rm -r {self.tmp_dir}")
 ```
+
 ### E. Inference
 
 In the inference stage, I use the trained model to generate synthetic images and evaluate them using the provided evaluator. The process for generating images is similar to the training process, except that during inference, we start with randomly generated noise instead of adding noise. The model predicts noise iteratively until the synthetic images are generated. The main steps are as follows:
 
 1. Randomly generate an initial noisy image from a standard normal distribution.
 2. Perform denoising:
-    - At each timestep, the model predicts the noise based on the current noisy image, timestep, and label.
-    - Update the noisy image using the noise schedule.
-    - Save images every 100 timesteps to observe the denoising process.
+   - At each timestep, the model predicts the noise based on the current noisy image, timestep, and label.
+   - Update the noisy image using the noise schedule.
+   - Save images every 100 timesteps to observe the denoising process.
 3. Use the evaluator to calculate the accuracy between the synthetic images and labels.
 4. Generate a grid of synthetic images using `make_grid`.
-
 
 ```python
 @torch.no_grad()
@@ -281,26 +285,28 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
 
     for i, label in (pbar := tqdm(enumerate(test_loader), total=len(test_loader))):
         label = label.to(device)
-        
+
         # sample noisy images
         sample = torch.randn(label.shape[0], 3, 64, 64).to(device)
         denoising_images = []
         for step, timesteps in enumerate(noise_schedule.timesteps):
             noise_pred = model(sample, timesteps, label)
             sample = noise_schedule.step(noise_pred, timesteps, sample).prev_sample
-            
+
             if (step+1) % 100 == 0:
                 denoising_images.append(sample)
-                
+
         # compute accuracy
         acc = evaluator.eval(sample, label)
         total_acc += acc
         results = torch.cat([results, sample.cpu()], dim=0)
+```
 
+```python
         # show denoising process
         if i < 2:
             show_images(denoising_images, title=f"Denoising process image {i+1}", save_path=f"{test_json}-images{i+1}.png", denoising_process=True)
-        
+
         # update progress bar
         pbar.set_description(f"(test) Accuracy: {acc:.4f}")
 
@@ -310,46 +316,49 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
     return total_acc / len(test_loader), results
 ```
 
+<div style="break-after:page"></div>
+
 ## III. Results and discussion
+
 ### A. Synthetic image grids
 
 | The synthetic images grid on test.json ( Accuracy: 0.9545 ) |
 |:-----------------------------------------------------------:|
-|   ![test-images-grid.png](img/test/test-images-grid.png)    |
+| ![test-images-grid.png](img/test/test-images-grid.png)      |
 
-
-|  The synthetic images grid on new_test.json ( Accuracy: 0.9117 )   |
+| The synthetic images grid on new_test.json ( Accuracy: 0.9117 )    |
 |:------------------------------------------------------------------:|
 | ![new_test-images-grid.png](img/new_test/new_test-images-grid.png) |
 
 ### B. Denoising process image
 
-|         Denoising process of image 1 on new_test.json          |
+| Denoising process of image 1 on new_test.json                  |
 |:--------------------------------------------------------------:|
 | ![new_test-images1-0.png](img/new_test/new_test-images1-0.png) |
-|        label: ["gray cube", "red cube", "gray sphere"]         |
+| label: ["gray cube", "red cube", "gray sphere"]                |
 
-|     Denoising process of image 1 on test.json      |
+| Denoising process of image 1 on test.json          |
 |:--------------------------------------------------:|
 | ![test-images1-0.png](img/test/test-images1-0.png) |
-|                label: ["gray cube"]                |
+| label: ["gray cube"]                               |
 
 ### C. Extra implementations or experiments
+
 In this experiment, I performed evaluations every 10 epochs, and the results are shown in the figure. It can be observed that the model achieved an accuracy above 0.5 by the 10th epoch and surpassed 0.8 by the 50th epoch. This indicates that the model converged quickly with stable improvement throughout the training process. The training loss also demonstrates a steady decrease, with the loss reaching a very low level by the 50th epoch.
 
-|             Accuracy              |
+| Accuracy                          |
 |:---------------------------------:|
 | ![accuracy.png](img/accuracy.png) |
 
-|             Training Loss             |
+| Training Loss                         |
 |:-------------------------------------:|
 | ![train_loss.png](img/train_loss.png) |
 
-
 ---
 
-# Experimental results
+<div style="break-after:page"></div>
 
+# Experimental results
 
 ## I. Accuracy screenshots
 
@@ -423,7 +432,6 @@ Our directory structure should look like this:
 ```
 
 Please put the `DL_lab6_313551097_鄭淮薰.pth` and `checkpoint.pth` in the corresponding directories.
-
 
 ### B. test.json
 
