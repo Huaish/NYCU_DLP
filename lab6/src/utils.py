@@ -13,6 +13,7 @@ def args_parser():
     parser.add_argument('--device', type=str, default="cuda:0", help='Which device the training is on.')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of worker')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for training.')
+    parser.add_argument('--test-batch-size', type=int, default=1, help='Batch size for testing.')
     parser.add_argument('--partial', type=float, default=1.0, help='Number of epochs to train (default: all)')    
     parser.add_argument('--accum-grad', type=int, default=10, help='Number for gradient accumulation.')
     parser.add_argument('--seed', type=int, default=0, help='Random seed.')
@@ -78,26 +79,29 @@ def show_images(images, title="", save_path="images.png", nrow=8, denoising_proc
 
     if isinstance(images, list):
         images = torch.stack(images).cpu()
-        
-    # (-1, 1) -> (0, 1)
-    images_tensor = images * 0.5 + 0.5
+        images = images.permute(1, 0, 2, 3, 4)
+    
+    if images.dim() == 4:
+        images = images.unsqueeze(0)
+    
+    for batch, batch_images in enumerate(images):
+        images_tensor = batch_images * 0.5 + 0.5 # (-1, 1) -> (0, 1)
 
-    # set nrow for denoising process
-    if denoising_process:
-        nrow = len(images_tensor)
+        # set nrow for denoising process
+        if denoising_process:
+            nrow = len(images_tensor)
 
-    # generate grid of images
-    grid = make_grid(images_tensor, nrow=nrow, padding=2)
+        # generate grid of images
+        grid = make_grid(images_tensor, nrow=nrow, padding=2)
 
-    # show grids
-    plt.clf()
-    plt.figure(figsize=(15, 2) if denoising_process else (15, 8))
-    # Convert from CHW to HWC
-    plt.imshow(grid.permute(1, 2, 0).clip(0, 1))  
-    plt.axis('off')
-    plt.margins(0, 0)
-    plt.title(title if title else ('Denoising Process (Noisy to Clear)' if denoising_process else 'Image Grid'))
-    plt.savefig(save_path)
+        # show grids
+        plt.clf()
+        plt.figure(figsize=(15, 2) if denoising_process else (15, 8))
+        plt.imshow(grid.permute(1, 2, 0).clip(0, 1))  # Convert from CHW to HWC
+        plt.axis('off')
+        plt.margins(0, 0)
+        plt.title(title if not denoising_process else f"{title} (batch {batch})")
+        plt.savefig(save_path if not denoising_process else f"{os.path.splitext(save_path)[0]}-{batch}.png")
     
     
 def set_seed(seed):
@@ -110,8 +114,5 @@ def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.enabled = False
 
     print(f"Set seed {seed} for reproducibility")

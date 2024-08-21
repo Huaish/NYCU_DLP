@@ -22,8 +22,8 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
     noise_schedule = DDPMScheduler(**DDPM_CONFIGS['noise_schedule'])
     evaluator = evaluation_model()
     total_acc = 0
-    results = []
-    
+    results = torch.empty(0, 3, 64, 64)
+
     for i, label in (pbar := tqdm(enumerate(test_loader), total=len(test_loader))):
         label = label.to(device)
         
@@ -35,12 +35,12 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
             sample = noise_schedule.step(noise_pred, timesteps, sample).prev_sample
             
             if (step+1) % 100 == 0:
-                denoising_images.append(sample.squeeze(0))
+                denoising_images.append(sample)
                 
         # compute accuracy
         acc = evaluator.eval(sample, label)
         total_acc += acc
-        results.append(sample.squeeze(0))
+        results = torch.cat([results, sample.cpu()], dim=0)
 
         # show denoising process
         if i < 5:
@@ -48,7 +48,10 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
         
         # update progress bar
         pbar.set_description(f"(test) Accuracy: {acc:.4f}")
-        
+
+    # show synthetic images grid
+    acc = total_acc / len(test_loader)
+    results = torch.cat(results, dim=0)
     show_images(results, title=f"The synthetic image grid on {test_json}.json. (Acc {acc:.4f})", save_path=f"{test_json}-images-grid.png")
     return total_acc / len(test_loader), results
 
@@ -58,8 +61,8 @@ if __name__ == '__main__':
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     test_dataset = LoadTestData(root=args.dr, test_json=args.test_json, object_json=args.object_json)
-    test_loader = DataLoader(test_dataset, batch_size=1, num_workers=args.num_workers, shuffle=False)
-    print(f"Load {args.test_json} dataset with {len(test_loader)} labels")
+    test_loader = DataLoader(test_dataset, batch_size=args.test_batch_size, num_workers=args.num_workers, shuffle=False)
+    print(f"Load {args.test_json} dataset with {len(test_dataset)} labels")
 
     DDPM_CONFIGS = yaml.safe_load(open(args.config, 'r'))
     model = load_checkpoint(args.ckpt_path, DDPM_CONFIGS, args.device)
