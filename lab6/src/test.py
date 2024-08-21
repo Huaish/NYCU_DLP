@@ -43,7 +43,7 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
         results = torch.cat([results, sample.cpu()], dim=0)
 
         # show denoising process
-        if i < 5:
+        if i < 2:
             show_images(denoising_images, title=f"Denoising process image {i+1}", save_path=f"{test_json}-images{i+1}.png", denoising_process=True)
         
         # update progress bar
