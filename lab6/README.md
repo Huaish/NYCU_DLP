@@ -12,8 +12,8 @@ In this lab, we implement a generative model called Diffusion Probabilistic Mode
 ## II. Implementation details
 
 ### A. Model
-> Reference 1: https://github.com/huggingface/diffusion-models-class
-> Reference 2: https://huggingface.co/docs/diffusers/tutorials/basic_training
+> Reference 1: [https://github.com/huggingface/diffusion-models-class](https://github.com/huggingface/diffusion-models-class)   
+> Reference 2: [https://huggingface.co/docs/diffusers/tutorials/basic_training](https://huggingface.co/docs/diffusers/tutorials/basic_training)
 
 I used the `UNet2DModel` from the `diffusers` library to build a ConditionalDDPM model and designed the architecture based on a Hugging Face example. The model outputs 64x64 images with 3 channels. The architecture follows the example closely, with six levels and added attention blocks to better capture relationships between different locations in the image, which results in more consistent details. To enable conditional image generation, the one-hot encoded labels are first passed through a `linear layer` to transform them into vectors with the specified dimensions, which are then used as class embeddings in the model.
 
@@ -72,7 +72,7 @@ noise_schedule = DDPMScheduler(
 
 ### C. Dataloader
 
-Dataloader 的部分我設計了兩個類別，分別是 `LoadTrainData` 和 `LoadTestData`。`LoadTrainData` 用來載入訓練資料，並將影像轉換成模型所需的格式，同時將 label 轉換成 one-hot encoded tensor。`LoadTestData` 則是用來載入測試資料，並將 label 轉換成 one-hot encoded tensor。
+For the Dataloader part, I designed two categories: `LoadTrainData` and `LoadTestData`. `LoadTrainData` is used to load training data, convert the image into the format required by the model, and convert the label into a one-hot encoded tensor. `LoadTestData` is used to load test data and convert label into one-hot encoded tensor.
 
 ```python
 class LoadTrainData(torchData):
@@ -337,9 +337,9 @@ def inference(model, test_loader, DDPM_CONFIGS, device, test_json=""):
 ### C. Extra implementations or experiments
 In this experiment, I performed evaluations every 10 epochs, and the results are shown in the figure. It can be observed that the model achieved an accuracy above 0.5 by the 10th epoch and surpassed 0.8 by the 50th epoch. This indicates that the model converged quickly with stable improvement throughout the training process. The training loss also demonstrates a steady decrease, with the loss reaching a very low level by the 50th epoch.
 
-|                  Accuracy                   |
-|:-------------------------------------------:|
-| ![accuracy_loss.png](img/accuracy_loss.png) |
+|             Accuracy              |
+|:---------------------------------:|
+| ![accuracy.png](img/accuracy.png) |
 
 |             Training Loss             |
 |:-------------------------------------:|
@@ -394,7 +394,7 @@ Our directory structure should look like this:
 
 ```
 .
-└── DL_lab6_313551097_鄭淮薰/
+└── DL_LAB6_313551097_鄭淮薰/
     ├── lab6/
     │   ├── checkpoints/
     │   │   └── (put ddpm checkpoint "DL_lab6_313551097_鄭淮薰.pth" here)

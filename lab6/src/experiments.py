@@ -38,12 +38,13 @@ for model_name in sorted(os.listdir(saved_model_folder)):
                 model_names.append(model_name)
                 print(f"Model: {model_name}, Accuracy: {acc:.4f}")
 
-# Plot the results
-plt.figure(figsize=(10, 6))
-plt.bar(model_names, accuracies, color='skyblue')
-plt.xlabel('Model')
+# Plot the results with a line plot
+xlabel = [model_name.split('.')[0].split('_')[-1] for model_name in model_names]
+plt.figure(figsize=(20, 10))
+plt.plot(xlabel, accuracies, marker='o')
+plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
-plt.title('Model Accuracy Comparison')
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.savefig('model_accuracy_comparison.png')
+plt.title('Model Accuracy over Epochs')
+
+# Save the plot to a file
+plt.savefig('accuracy.png')
