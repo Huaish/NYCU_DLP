@@ -10,8 +10,6 @@ from models import MaskGit as VQGANTransformer
 from utils import LoadTrainData
 import yaml
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-import wandb
 
 #[x] TODO2 step1-4: design the transformer training strategy
 class TrainTransformer:
@@ -49,6 +47,7 @@ class TrainTransformer:
             pbar.set_description(f"(train) Epoch {epoch} - Loss: {loss.item():.4f}", refresh=False)
             
         if self.args.log:
+            import wandb
             self.writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
             wandb.log({"Loss/train": total_loss / len(train_loader)})
         return total_loss / len(train_loader)
@@ -71,6 +70,7 @@ class TrainTransformer:
             pbar.set_description(f"(val) Epoch {epoch} - Loss: {loss.item():.4f}", refresh=False)
         
         if self.args.log:
+            import wandb
             self.writer.add_scalar("Loss/val", total_loss / len(val_loader), epoch)
             wandb.log({"Loss/val": total_loss / len(val_loader)})
         return total_loss / len(val_loader)
@@ -116,6 +116,8 @@ class TrainTransformer:
     
     def init_logging(self):
         # Wandb
+        from torch.utils.tensorboard import SummaryWriter
+        import wandb
         if not args.resume_path:
             run_id = wandb.util.generate_id()
             self.args.run_id = run_id
@@ -131,6 +133,7 @@ class TrainTransformer:
         
     def save_model_to_wandb(self, epoch):
         try:
+            import wandb
             os.makedirs(f"tmp_{self.args.run_name}/models", exist_ok=True)
             # copy best transformer checkpoint to models folder
             os.system(f"cp transformer_checkpoints/{self.args.run_name}-{self.args.run_id}/best_model.pt tmp_{self.args.run_name}/models/{self.args.run_name}-best-transformer.pt")
@@ -144,6 +147,7 @@ class TrainTransformer:
             
     def save_tensorboard_to_wandb(self):
         try:
+            import wandb
             wandb.save(os.path.abspath(f"runs/{self.args.run_name}-{self.args.run_id}"), base_path=os.path.abspath("runs"))
             print("Saved tensorboard logs to wandb")
         except Exception as e:
@@ -151,6 +155,7 @@ class TrainTransformer:
             
     def finish_training(self):
         if self.args.log:
+            import wandb
             self.writer.close()
             wandb.finish()
         # remove models folder
@@ -178,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('--MaskGitConfig', type=str, default='config/MaskGit.yml', help='Configurations for TransformerVQGAN')
     
     # log
-    parser.add_argument('--log', action='store_false', help='Use tensorboard for logging')
+    parser.add_argument('--log', action='store_true', help='Use tensorboard for logging')
     parser.add_argument('--run-id', type=str, default="", help='Run ID for wandb')
     parser.add_argument('--resume-path', type=str, default=None, help='Path to resume training')
 
