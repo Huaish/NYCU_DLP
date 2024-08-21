@@ -635,7 +635,7 @@ python train.py --model ResNet34UNet
 **Inference UNet**
 
 ```sh
-python inference.py --type UNet
+python inference.py --type UNet\
      --model ../saved_models/DL_Lab3_UNet_313551097_鄭淮薰.pth
 ```
 
@@ -690,7 +690,7 @@ python utils.py --type UNet --mode predict \
 
 ### A. What architecture may bring better results?
 
-From the results above, we can see that the ResNet34_UNet model achieves a slightly higher than the UNet model in terms of the Dice score. I think that is because the ResNet34 encoder employs residual blocks, which help to alleviate the vanishing gradient problem and enable the model to learn more complex features.
+From the results above, we can see that the ResNet34_UNet model achieves a slightly higher than the UNet model in terms of the Dice score. I think that is because the ResNet34 encoder employs residual blocks, which help to alleviate the degradation problem and enable the model to learn more complex features.
 
 For more complex tasks, I think we can use deeper ResNet architectures like ResNet50 or ResNet101 as the encoder part of the UNet model to capture more complex features and improve the segmentation results. We can also do more advanced data augmentation techniques, such as CutMix, Mixup, etc., to increase the diversity of the training data and improve the model's generalization performance.
 
