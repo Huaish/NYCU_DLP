@@ -421,7 +421,7 @@ Our directory structure should look like this:
     │   ├── utils.py
     │   |
     │   ├── train.json
-    │   ├── object.json
+    │   ├── objects.json
     │   ├── test.json
     │   ├── new_test.json
     │   |
